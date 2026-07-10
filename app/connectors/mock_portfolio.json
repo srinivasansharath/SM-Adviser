@@ -1,0 +1,40 @@
+{
+  "holdings": [
+    {
+      "tradingsymbol": "TCS", "exchange": "NSE", "isin": "INE467B01029",
+      "instrument_token": 2953217, "product": "CNC",
+      "quantity": 20, "t1_quantity": 0,
+      "average_price": 3450.00, "last_price": 3890.50, "close_price": 3844.00,
+      "pnl": 8810.00, "day_change": 46.50, "day_change_percentage": 1.21
+    },
+    {
+      "tradingsymbol": "INFY", "exchange": "NSE", "isin": "INE009A01021",
+      "instrument_token": 408065, "product": "CNC",
+      "quantity": 50, "t1_quantity": 0,
+      "average_price": 1620.00, "last_price": 1512.30, "close_price": 1528.00,
+      "pnl": -5385.00, "day_change": -15.70, "day_change_percentage": -1.03
+    },
+    {
+      "tradingsymbol": "RELIANCE", "exchange": "NSE", "isin": "INE002A01018",
+      "instrument_token": 738561, "product": "CNC",
+      "quantity": 15, "t1_quantity": 0,
+      "average_price": 2380.00, "last_price": 2905.75, "close_price": 2890.00,
+      "pnl": 7886.25, "day_change": 15.75, "day_change_percentage": 0.54
+    },
+    {
+      "tradingsymbol": "HDFCBANK", "exchange": "NSE", "isin": "INE040A01034",
+      "instrument_token": 341249, "product": "CNC",
+      "quantity": 30, "t1_quantity": 0,
+      "average_price": 1550.00, "last_price": 1638.40, "close_price": 1650.00,
+      "pnl": 2652.00, "day_change": -11.60, "day_change_percentage": -0.70
+    },
+    {
+      "tradingsymbol": "TATAMOTORS", "exchange": "NSE", "isin": "INE155A01022",
+      "instrument_token": 884737, "product": "CNC",
+      "quantity": 100, "t1_quantity": 0,
+      "average_price": 720.00, "last_price": 612.85, "close_price": 628.00,
+      "pnl": -10715.00, "day_change": -15.15, "day_change_percentage": -2.41
+    }
+  ],
+  "positions": []
+}

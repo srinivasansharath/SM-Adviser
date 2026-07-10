@@ -1,0 +1,48 @@
+# Secrets — NEVER commit
+.env
+*.env
+!*.env.example
+config.yaml
+theses.yaml
+secrets/
+*.key
+*.pem
+kite_token*.json
+*.age
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Local data / DB
+*.db
+*.sqlite
+*.sqlite3
+data/
+reports_out/
+widget.json
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Shareable screenshots (contain real portfolio data — keep out of git)
+share/
+
+# iOS / Xcode
+ios/**/build/
+DerivedData/
+*.xcuserstate
+xcuserdata/

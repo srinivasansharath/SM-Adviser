@@ -1,0 +1,20 @@
+# Postgres for the NUC (24/7 server). Local dev/tests default to SQLite and don't need this.
+# Start: docker compose up -d   (or: docker-compose up -d on older Docker)
+# Then set DATABASE_URL in .env to match the credentials below.
+
+services:
+  db:
+    image: postgres:16
+    container_name: portfolio-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: portfolio
+      POSTGRES_PASSWORD: CHANGE_ME        # change this and mirror it in .env DATABASE_URL
+      POSTGRES_DB: portfolio
+    ports:
+      - "127.0.0.1:5432:5432"             # bound to localhost only — not exposed to the network
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+volumes:
+  pgdata:

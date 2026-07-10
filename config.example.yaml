@@ -1,0 +1,71 @@
+# Copy to config.yaml and adjust. config.yaml is gitignored (may reference account specifics).
+# Non-secret tunables live here; secrets live in .env.
+
+portfolio:
+  # Benchmarks each holding is compared against (Phase 2+).
+  benchmarks:
+    broad: ["NIFTY 50", "NIFTY 500"]
+  # Target allocation guardrails (Phase 4+ portfolio-fit scoring).
+  max_position_weight_pct: 12      # flag Trim if a single stock exceeds this
+  max_sector_weight_pct: 35        # flag concentration if a sector exceeds this
+  top5_concentration_warn_pct: 60  # warn if top-5 holdings exceed this share
+
+analytics:
+  lookback_trading_days: 24        # spec's "last 24 trading days" window
+  rsi_period: 14
+  moving_averages: [20, 50, 200]
+
+# Scoring model — derived from RESEARCH_DECISION_METHODS.md and BUILD_PLAN §5.
+# Tuned in Phase 5 backtesting; treat as informed defaults, not gospel.
+scoring:
+  # Composite = sum(weight * subscore), each subscore 0-100 (higher = more bullish).
+  weights:
+    fundamental: 0.25
+    valuation: 0.20
+    technical: 0.20
+    thesis: 0.15
+    news_risk: 0.12       # inverted: high risk -> low subscore
+    portfolio_fit: 0.08
+  # Composite -> classification bands (with hysteresis buffer to prevent churn).
+  bands:
+    accumulate_at_or_above: 75
+    watch_at_or_above: 60
+    hold_at_or_above: 45
+    trim_at_or_above: 30
+    # below trim_at_or_above => Exit Candidate
+    hysteresis_points: 3
+  # Hard-override rules -> straight to Exit Candidate regardless of composite.
+  hard_overrides:
+    interest_coverage_below: 1.5
+    net_debt_ebitda_above: 4.0
+    promoter_pledge_pct_above: 50
+    beneish_m_above: -1.78
+    altman_z_below: 1.81
+    fcf_negative_years: 2          # negative FCF this many yrs while PAT positive
+    auditor_resigned_months: 12
+  # Confidence-decay state machine (Core -> Watch -> Exit-Candidate).
+  deterioration:
+    signals_for_watch: 2
+    signals_for_exit_candidate: 3  # or any solvency/governance signal
+  # Fundamental deterioration thresholds (feed the signal count).
+  fundamental_flags:
+    revenue_decline_quarters: 2
+    ebitda_margin_drop_bps: 300
+    roce_floor_pct: 12
+    consensus_eps_cut_pct_90d: 10
+    cfo_pat_ratio_min_3yr: 0.7
+    dso_yoy_increase_pct: 20
+    valuation_percentile_trim: 90  # trailing P/E/EV-EBITDA vs own 5-yr range
+
+report:
+  formats: ["markdown", "html"]
+  output_dir: reports_out
+
+data_sources:
+  # Allowlist for news/research — social tips excluded unless labeled low-confidence.
+  news_allowlist:
+    - "nseindia.com"
+    - "bseindia.com"
+    - "moneycontrol.com"
+    - "business-standard.com"
+    - "livemint.com"

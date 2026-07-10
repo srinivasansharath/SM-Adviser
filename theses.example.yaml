@@ -1,0 +1,23 @@
+# Copy to theses.yaml. This is the HEART of the agent: why you own each stock and
+# what would break the thesis. The agent judges holdings against THIS, not just price.
+# Keyed by NSE tradingsymbol.
+
+TCS:
+  thesis: "Durable cash generation and dividends; large-cap IT stability anchor."
+  conviction: high            # high | medium | low
+  target_weight_pct: 8
+  bought_reason: "Consistent FCF, strong client retention, dividend track record."
+  exit_if:
+    - "Two consecutive quarters of revenue decline"
+    - "Dividend policy materially cut"
+    - "Large-deal TCV collapses or attrition spikes structurally"
+
+INFY:
+  thesis: "Digital transformation demand + margin discipline."
+  conviction: medium
+  target_weight_pct: 6
+  bought_reason: "Growth in digital revenue mix, improving operating margins."
+  exit_if:
+    - "Guidance cut two quarters running"
+    - "Margin below 20% structurally"
+    - "Major client concentration loss"
