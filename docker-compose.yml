@@ -1,20 +1,68 @@
-# Postgres for the NUC (24/7 server). Local dev/tests default to SQLite and don't need this.
-# Start: docker compose up -d   (or: docker-compose up -d on older Docker)
-# Then set DATABASE_URL in .env to match the credentials below.
+# SM-Adviser full stack for the NUC (24/7 server).
+#
+#   docker compose up -d --build              # start Postgres + API
+#   docker compose --profile job run --rm morning-run   # run the daily orchestrator once
+#
+# The morning-run service is behind the "job" profile so it does NOT start with `up`;
+# a systemd timer (deploy/) invokes it once per day. Both app services share one image
+# and bind-mount the repo at /app, so reports_out/, data/ and kite_token.json persist on
+# the host and a code update is just `rsync + restart`.
+#
+# Secrets/runtime come from .env (chmod 600 on the NUC). POSTGRES_PASSWORD must be set there.
 
 services:
   db:
     image: postgres:16
-    container_name: portfolio-db
+    container_name: sm-adviser-db
     restart: unless-stopped
     environment:
       POSTGRES_USER: portfolio
-      POSTGRES_PASSWORD: CHANGE_ME        # change this and mirror it in .env DATABASE_URL
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
       POSTGRES_DB: portfolio
     ports:
-      - "127.0.0.1:5432:5432"             # bound to localhost only — not exposed to the network
+      - "127.0.0.1:5432:5432"          # localhost only — never exposed to the LAN
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U portfolio -d portfolio"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build: .
+    image: sm-adviser:latest
+    container_name: sm-adviser-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://portfolio:${POSTGRES_PASSWORD}@db:5432/portfolio
+    volumes:
+      - ./:/app                        # live code + config + reports_out + data + token cache
+    ports:
+      - "0.0.0.0:8787:8787"            # reachable over Tailscale/LAN; auth via WIDGET_API_TOKEN
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8787/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  morning-run:
+    build: .
+    image: sm-adviser:latest
+    profiles: ["job"]                  # not started by `up`; run on a schedule
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://portfolio:${POSTGRES_PASSWORD}@db:5432/portfolio
+    volumes:
+      - ./:/app
+    command: ["python", "-m", "app.jobs.morning_run"]
 
 volumes:
   pgdata:

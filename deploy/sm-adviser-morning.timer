@@ -1,0 +1,12 @@
+# Fires the morning run on weekday mornings (IST — set the NUC tz to Asia/Kolkata).
+# Persistent=true catches up a missed run if the NUC was asleep at the scheduled time.
+[Unit]
+Description=Schedule SM-Adviser daily morning portfolio run
+
+[Timer]
+OnCalendar=Mon-Fri 08:00:00
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

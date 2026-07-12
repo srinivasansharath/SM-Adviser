@@ -1,0 +1,10 @@
+# Periodic health watchdog. Paired with sma-watchdog.timer. Install into /etc/systemd/system/.
+[Unit]
+Description=SM-Adviser health watchdog
+After=docker.service network-online.target
+Wants=docker.service
+
+[Service]
+Type=oneshot
+User=sharath
+ExecStart=/home/sharath/sm-adviser/deploy/monitor/sma-watchdog.sh

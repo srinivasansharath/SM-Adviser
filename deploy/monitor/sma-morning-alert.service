@@ -1,0 +1,8 @@
+# OnFailure target for sm-adviser-morning.service. Install into /etc/systemd/system/.
+[Unit]
+Description=Email alert on SM-Adviser morning-run failure
+
+[Service]
+Type=oneshot
+User=sharath
+ExecStart=/home/sharath/sm-adviser/deploy/monitor/sma-morning-failure.sh

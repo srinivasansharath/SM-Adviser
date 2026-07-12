@@ -1,0 +1,17 @@
+# Runs the daily morning orchestrator once, in a throwaway container.
+# Paired with sm-adviser-morning.timer. Install into /etc/systemd/system/.
+[Unit]
+Description=SM-Adviser daily morning portfolio run
+Wants=docker.service
+After=docker.service network-online.target
+Requires=docker.service
+# Email an alert (with recent logs) if the daily run exits non-zero.
+OnFailure=sma-morning-alert.service
+
+[Service]
+Type=oneshot
+User=sharath
+WorkingDirectory=/home/sharath/sm-adviser
+# --rm cleans up the container; the job writes reports_out/ + Postgres rows on the host.
+ExecStart=/usr/bin/docker compose --profile job run --rm morning-run
+TimeoutStartSec=1800

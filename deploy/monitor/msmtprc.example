@@ -1,0 +1,18 @@
+# Copy to ~/.msmtprc on the NUC, fill in the app password, then: chmod 600 ~/.msmtprc
+# Gmail app password: https://myaccount.google.com/apppasswords  (2FA must be on).
+# If sending from a Google Workspace address (e.g. sharath@kreo.in), set from/user to it
+# and generate the app password on that account.
+defaults
+auth           on
+tls            on
+tls_trust_file /etc/ssl/certs/ca-certificates.crt
+logfile        ~/.msmtp.log
+
+account        gmail
+host           smtp.gmail.com
+port           587
+from           srinivasansharath@gmail.com
+user           srinivasansharath@gmail.com
+password       PASTE_16_CHAR_APP_PASSWORD_HERE
+
+account default : gmail

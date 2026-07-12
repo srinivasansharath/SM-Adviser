@@ -1,0 +1,11 @@
+# Keep the build context (and the bind-mount) lean.
+.git
+.venv
+**/__pycache__
+*.pyc
+.pytest_cache
+portfolio_agent.egg-info
+ios
+share
+*.docx
+.DS_Store

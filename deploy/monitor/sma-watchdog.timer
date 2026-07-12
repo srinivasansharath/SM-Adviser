@@ -1,0 +1,10 @@
+# Runs the health watchdog every 20 minutes (and 5 min after boot).
+[Unit]
+Description=Schedule SM-Adviser health watchdog
+
+[Timer]
+OnBootSec=5min
+OnUnitActiveSec=20min
+
+[Install]
+WantedBy=timers.target
