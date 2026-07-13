@@ -80,5 +80,21 @@ services:
       - ./:/app
     command: ["python", "-m", "app.jobs.intraday_refresh"]
 
+  # Schema migrations. Run before starting the stack on a fresh deploy:
+  #   docker compose --profile job run --rm migrate
+  migrate:
+    build: .
+    image: sm-adviser:latest
+    profiles: ["job"]
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://portfolio:${POSTGRES_PASSWORD}@db:5432/portfolio
+    volumes:
+      - ./:/app
+    command: ["alembic", "upgrade", "head"]
+
 volumes:
   pgdata:

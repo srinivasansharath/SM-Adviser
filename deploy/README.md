@@ -39,10 +39,12 @@ so `reports_out/`, `data/` and `kite_token.json` persist on the host disk.
    ```
    Leave `DATABASE_URL` unset/commented — compose injects the Postgres URL. `chmod 600 .env`.
 
-3. **Build + start** the stack:
+3. **Build, migrate, start** the stack:
    ```bash
    cd ~/sm-adviser
-   docker compose up -d --build          # starts db + api; tables auto-create on first run
+   docker compose build
+   docker compose --profile job run --rm migrate   # create/upgrade schema (Alembic)
+   docker compose up -d                             # start db + api
    ```
 
 4. **Seed the first report** (also verifies Kite/Claude end-to-end):
@@ -77,6 +79,19 @@ curl -fsS localhost:8787/health          # health
 journalctl -u sm-adviser-morning.service # timer run history
 ```
 
-> **Alembic:** the app calls `create_all` on first DB use, which creates every table on
-> Postgres — enough for the initial deploy. Add Alembic migrations before the first
-> schema change so existing rows survive (today a schema change means dropping tables).
+## Schema changes (Alembic)
+
+Postgres is schema-managed by **Alembic** (SQLite dev/tests still use `create_all`). After
+changing a model in `app/storage/models.py`:
+
+```bash
+# on the Mac (dev): generate the migration from the model diff, review it, commit it
+alembic revision --autogenerate -m "add X"
+
+# on the NUC: sync, then apply
+./deploy/sync-to-nuc.sh
+ssh NUC-HadesCanyon-Linux 'cd ~/sm-adviser && docker compose --profile job run --rm migrate'
+```
+
+`migrate` runs `alembic upgrade head`. Existing rows are preserved (no more drop-and-recreate).
+Check state with `docker compose --profile job run --rm migrate alembic current`.

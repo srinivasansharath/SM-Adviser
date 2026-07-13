@@ -33,9 +33,12 @@ def make_session_factory(engine: Engine) -> sessionmaker:
 
 
 def bootstrap(url: str | None = None) -> sessionmaker:
-    """Convenience: build engine, create tables, return a session factory."""
+    """Build engine + session factory. SQLite (dev/tests) creates its schema directly;
+    Postgres (production) is schema-managed by Alembic migrations, so we don't create_all
+    there (that would race the migration history)."""
     engine = make_engine(url)
-    create_all(engine)
+    if engine.dialect.name == "sqlite":
+        create_all(engine)
     return make_session_factory(engine)
 
 
