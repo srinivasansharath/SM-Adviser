@@ -17,6 +17,7 @@ struct ServerSettings: Equatable {
 enum SettingsStore {
     private static let kURL = "server_base_url"
     private static let kToken = "server_token"
+    private static let kDemo = "demo_mode"
     // Shared App Group container; falls back to standard defaults if the group isn't provisioned
     // (e.g. an unsigned Simulator build) so the container app still works for testing.
     private static var defaults: UserDefaults { UserDefaults(suiteName: AppConfig.appGroup) ?? .standard }
@@ -35,6 +36,13 @@ enum SettingsStore {
     static func clear() {
         defaults.removeObject(forKey: kURL)
         defaults.removeObject(forKey: kToken)
+        defaults.removeObject(forKey: kDemo)
+    }
+
+    /// Demo mode: preview the app with bundled sample data, no server (for onboarding / review).
+    static var isDemo: Bool {
+        get { defaults.bool(forKey: kDemo) }
+        set { defaults.set(newValue, forKey: kDemo) }
     }
 
     static var isConfigured: Bool { load() != nil }

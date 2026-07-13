@@ -3,7 +3,7 @@ import WidgetKit
 
 /// Branches on whether the user has connected a server yet (Home-Assistant style).
 struct ContentView: View {
-    @State private var configured = SettingsStore.isConfigured
+    @State private var configured = SettingsStore.isConfigured || SettingsStore.isDemo
 
     var body: some View {
         NavigationStack {

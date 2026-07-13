@@ -13,6 +13,7 @@
 		3A8335AF513006DDC074918E /* PortfolioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D0CB050AF84EFAF3193DAB0 /* PortfolioService.swift */; };
 		4969FC5A3D04E453BDE575A3 /* StockDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005CD0C9D3CAAD59DB2A0BD9 /* StockDetailView.swift */; };
 		511F03699104EE0EC2EA20F5 /* PortfolioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D0CB050AF84EFAF3193DAB0 /* PortfolioService.swift */; };
+		5A21912D49DABE888817049D /* DemoStock.html in Resources */ = {isa = PBXBuildFile; fileRef = 5FB4E7B631B9E72C35867CF4 /* DemoStock.html */; };
 		68C67547D5A5026E3D43797F /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB69A6D57F6E555183291122 /* AppConfig.swift */; };
 		775E0E061E2293B13E0F8374 /* CyclePeriodIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E1F33F6AAACD9A25DFC4F30 /* CyclePeriodIntent.swift */; };
 		83E13A1D6F1BB6E40B254DFB /* WidgetModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01843D66CBEF18300C43A033 /* WidgetModels.swift */; };
@@ -63,6 +64,7 @@
 		2AED2D31C303A1E635F9CDC4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		3E1F33F6AAACD9A25DFC4F30 /* CyclePeriodIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CyclePeriodIntent.swift; sourceTree = "<group>"; };
 		415632F983E54D9FDBF3096B /* SMAdviser.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SMAdviser.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		5FB4E7B631B9E72C35867CF4 /* DemoStock.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = DemoStock.html; sourceTree = "<group>"; };
 		6402602DF58BAABA60DF7341 /* PortfolioWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortfolioWidget.swift; sourceTree = "<group>"; };
 		7A3697EE216D53455284A739 /* SMAdviser.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SMAdviser.entitlements; sourceTree = "<group>"; };
 		7D0CB050AF84EFAF3193DAB0 /* PortfolioService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortfolioService.swift; sourceTree = "<group>"; };
@@ -117,6 +119,7 @@
 			children = (
 				0FCEE064512F061D4E3A26F3 /* Assets.xcassets */,
 				111C0E2C60088035A32B6193 /* ContentView.swift */,
+				5FB4E7B631B9E72C35867CF4 /* DemoStock.html */,
 				2AED2D31C303A1E635F9CDC4 /* Info.plist */,
 				26301F47DD22AF4766C1EDA1 /* SetupView.swift */,
 				7A3697EE216D53455284A739 /* SMAdviser.entitlements */,
@@ -219,6 +222,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				C130045BA9E62F13CB366B3F /* Assets.xcassets in Resources */,
+				5A21912D49DABE888817049D /* DemoStock.html in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

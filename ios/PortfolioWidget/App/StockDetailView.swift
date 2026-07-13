@@ -62,13 +62,14 @@ struct WebReportView: View {
     }
 }
 
-/// The per-stock analysis one-pager.
+/// The per-stock analysis one-pager (bundled sample page in demo mode).
 struct StockDetailView: View {
     let symbol: String
     var body: some View {
-        WebReportView(title: symbol,
-                      url: SettingsStore.stockURL(symbol),
-                      pdfName: "SM Adviser - \(symbol)")
+        let url = SettingsStore.isDemo
+            ? Bundle.main.url(forResource: "DemoStock", withExtension: "html")
+            : SettingsStore.stockURL(symbol)
+        WebReportView(title: symbol, url: url, pdfName: "SM Adviser - \(symbol)")
     }
 }
 
@@ -83,11 +84,15 @@ struct AuthWebView: UIViewRepresentable {
         webView.isOpaque = false
         webView.backgroundColor = .clear
         exporter?.webView = webView
-        var request = URLRequest(url: url)
-        if !token.isEmpty {
-            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        if url.isFileURL {
+            webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+        } else {
+            var request = URLRequest(url: url)
+            if !token.isEmpty {
+                request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+            }
+            webView.load(request)
         }
-        webView.load(request)
         return webView
     }
 

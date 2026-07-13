@@ -39,6 +39,18 @@ struct SetupView: View {
                     Label(message, systemImage: "exclamationmark.triangle").foregroundStyle(.red).font(.footnote)
                 }
             }
+
+            Section {
+                Button {
+                    SettingsStore.isDemo = true
+                    WidgetCenter.shared.reloadAllTimelines()
+                    onConnected()
+                } label: {
+                    Label("Preview with demo data", systemImage: "eye")
+                }
+            } footer: {
+                Text("Explore the app with sample data — no server required.")
+            }
         }
         .navigationTitle("Connect")
     }

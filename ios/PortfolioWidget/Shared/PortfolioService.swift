@@ -3,6 +3,7 @@ import Foundation
 /// Fetches and decodes widget.json from the user's self-hosted server (settings via SettingsStore).
 enum PortfolioService {
     static func fetch() async -> (data: WidgetData?, error: String?) {
+        if SettingsStore.isDemo { return (WidgetData.sample, nil) }
         guard let url = SettingsStore.widgetURL else {
             return (nil, "Not connected. Open SM Adviser to add your server.")
         }

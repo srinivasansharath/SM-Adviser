@@ -1,0 +1,77 @@
+<!doctype html><html lang="en"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TATACHEM — analysis</title>
+<style>
+:root{color-scheme:light dark}
+*{box-sizing:border-box}
+body{font:15px/1.55 -apple-system,system-ui,Segoe UI,Roboto,sans-serif;margin:0;padding:14px;
+ color:#111;background:#f2f2f7}
+@media (prefers-color-scheme:dark){body{color:#e5e5ea;background:#000}.card{background:#1c1c1e!important}
+ .bar{background:#2c2c2e!important} .tick{color:#8e8e93} h2{color:#e5e5ea}}
+.card{background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:12px;
+ box-shadow:0 1px 3px rgba(0,0,0,.06)}
+h1{font-size:1.7rem;margin:0} h2{font-size:.95rem;margin:0 0 10px;color:#333}
+.badge{display:inline-block;color:#fff;font-weight:700;font-size:.8rem;padding:4px 10px;border-radius:999px}
+.pill{display:inline-block;color:#fff;font-weight:600;font-size:.65rem;padding:2px 8px;border-radius:999px;
+ vertical-align:middle;margin-left:6px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.price{font-size:1.3rem;font-weight:700} .sub{color:#8e8e93;font-size:.85rem}
+.note{margin:0;font-size:.95rem}
+.gauge{position:relative;height:12px;background:linear-gradient(90deg,#dc2626,#ea580c,#d97706,#16a34a);
+ border-radius:6px;margin:26px 6px 30px}
+.cmark{position:absolute;top:-6px;width:4px;height:24px;background:#111;border:2px solid #fff;border-radius:3px}
+@media (prefers-color-scheme:dark){.cmark{background:#fff;border-color:#000}}
+.tick{position:absolute;top:16px;transform:translateX(-50%);font-size:.6rem;color:#8e8e93;white-space:nowrap}
+.srow{display:flex;align-items:center;gap:10px;margin:8px 0}
+.slabel{flex:0 0 34%;font-size:.85rem} .wt{color:#8e8e93;font-size:.65rem;margin-left:5px}
+.bar{flex:1;height:8px;background:#e5e5ea;border-radius:4px;overflow:hidden}
+.fill{height:100%;border-radius:4px}
+.sval{flex:0 0 48px;text-align:right;font-weight:700;font-variant-numeric:tabular-nums}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}
+.kv{display:flex;justify-content:space-between;border-bottom:1px solid rgba(128,128,128,.15);padding:4px 0;font-size:.9rem}
+.kv span{color:#8e8e93}
+.reasons{margin:6px 0 0;padding-left:18px} .reasons li{margin:3px 0;font-size:.9rem}
+.muted{color:#8e8e93;font-size:.85rem}
+.disc{color:#8e8e93;font-size:.72rem;text-align:center;margin:14px 4px 4px}
+</style></head><body>
+
+<section class="card">
+  <div class="top">
+    <h1>TATACHEM</h1>
+    <span class="badge" style="background:#dc2626">Exit Candidate</span>
+  </div>
+  <div class="top" style="margin-top:8px">
+    <div class="price">₹721.00</div>
+    <div class="sub">Confidence: High · was Trim Candidate</div>
+  </div>
+  <div class="sub" style="margin-top:4px">
+    Since buy <b style="color:#16a34a">+148.20%</b> (+₹46,600)
+  </div>
+</section>
+
+<section class="card"><h2>Analyst view <span class="pill" style="background:#dc2626">Thesis: IMPAIRED</span></h2><p class="note">Weak ROE and ROCE alongside a price below its 200-day average and negative relative strength point to thesis impairment rather than a passing dip. Concentration is high at 27% of the book, so the risk is outsized.</p></section>
+
+<section class="card">
+  <h2>How this call was reached</h2>
+  <div class="gauge"><div class="cmark" style="left:32%"></div><span class="tick" style="left:0%">Exit</span><span class="tick" style="left:30%">Trim</span><span class="tick" style="left:45%">Hold</span><span class="tick" style="left:60%">Watch</span><span class="tick" style="left:75%">Accumulate</span></div>
+  <div class="sub">Composite score <b style="color:#111">32</b>/100 (data coverage 88% → High confidence). The composite is a weighted blend of the sub-scores below, mapped to a band; a hysteresis buffer avoids day-to-day churn.</div>
+  <ul class='reasons'><li>price below 200-DMA and lagging the benchmark</li><li>weak ROE/ROCE</li><li>valuation stretched vs history</li></ul>
+</section>
+
+<section class="card">
+  <h2>Sub-scores (0–100, higher = healthier)</h2>
+  <div class="srow"><div class="slabel">Technical<span class="wt">wt 20%</span></div><div class="bar"><div class="fill" style="width:18%;background:#dc2626"></div></div><div class="sval" style="color:#dc2626">18</div></div><div class="srow"><div class="slabel">Fundamental<span class="wt">wt 25%</span></div><div class="bar"><div class="fill" style="width:42%;background:#dc2626"></div></div><div class="sval" style="color:#dc2626">42</div></div><div class="srow"><div class="slabel">Valuation<span class="wt">wt 20%</span></div><div class="bar"><div class="fill" style="width:35%;background:#dc2626"></div></div><div class="sval" style="color:#dc2626">35</div></div><div class="srow"><div class="slabel">Portfolio fit<span class="wt">wt 8%</span></div><div class="bar"><div class="fill" style="width:20%;background:#dc2626"></div></div><div class="sval" style="color:#dc2626">20</div></div><div class="srow"><div class="slabel">Thesis<span class="wt">wt 15%</span></div><div class="bar"><div class="fill" style="width:30%;background:#dc2626"></div></div><div class="sval" style="color:#dc2626">30</div></div><div class="srow"><div class="slabel">News risk<span class="wt">wt 12%</span></div><div class="bar"><div class="fill" style="width:0%;background:#9ca3af"></div></div><div class="sval" style="color:#9ca3af">no data</div></div>
+</section>
+
+<section class="card">
+  <h2>Evidence</h2>
+  <div class="grid"><div class="kv"><span>Today</span><b>-0.73%</b></div><div class="kv"><span>1 month</span><b>-3.20%</b></div><div class="kv"><span>1 year</span><b>-14.50%</b></div><div class="kv"><span>Since buy</span><b>+148.20%</b></div><div class="kv"><span>vs 50-DMA</span><b>below</b></div><div class="kv"><span>vs 200-DMA</span><b>below</b></div><div class="kv"><span>RSI (14)</span><b>41</b></div><div class="kv"><span>Max drawdown</span><b>-22.00%</b></div><div class="kv"><span>Rel. strength</span><b>-6.5</b></div><div class="kv"><span>Weight</span><b>27.0%</b></div></div>
+</section>
+
+<section class="card">
+  <h2>Fundamentals</h2>
+  <div class="grid"><div class="kv"><span>P/E</span><b>38.2</b></div><div class="kv"><span>ROCE</span><b>9.1</b></div><div class="kv"><span>ROE</span><b>7.4</b></div><div class="kv"><span>Div yield</span><b>0.8</b></div><div class="kv"><span>Book value</span><b>312.0</b></div></div>
+</section>
+
+<div class="disc">As of 2026-07-13 · prices 2026-07-13T13:04:58+05:30. Personal informational use, not investment advice.</div>
+</body></html>
