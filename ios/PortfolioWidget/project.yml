@@ -31,8 +31,8 @@ targets:
       properties:
         CFBundleDisplayName: SM Adviser
         UILaunchScreen: {}
-        NSAppTransportSecurity:
-          NSAllowsArbitraryLoads: true
+        # ATS enforced (no arbitrary loads): the backend is reached over HTTPS via
+        # Tailscale serve with a valid Let's Encrypt cert.
     dependencies:
       - target: PortfolioWidgetExtension
         embed: true
@@ -51,7 +51,5 @@ targets:
       path: Widget/Info.plist
       properties:
         CFBundleDisplayName: SM Adviser
-        NSAppTransportSecurity:
-          NSAllowsArbitraryLoads: true
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
