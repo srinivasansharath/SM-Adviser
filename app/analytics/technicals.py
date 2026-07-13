@@ -82,6 +82,7 @@ def compute_metrics(candles: list[dict], index_candles: list[dict] | None = None
         "ret_1d": pct_return(candles, 1),
         "ret_5d": pct_return(candles, 5),
         "ret_20d": pct_return(candles, 20),
+        "ret_252d": pct_return(candles, 252),   # ~1 trading year
         "drawdown": max_drawdown(candles),
         "rsi": rsi(candles, 14),
         "vol_spike": volume_spike(candles, 20),

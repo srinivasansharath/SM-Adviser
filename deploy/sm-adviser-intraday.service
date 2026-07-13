@@ -1,0 +1,15 @@
+# Intraday price refresh (widget.json only). Paired with sm-adviser-intraday.timer.
+# No OnFailure alert: a missed intraday tick is non-critical (prices just don't update
+# until the next tick), and alerting every 15 min would violate "keep chatter minimal".
+[Unit]
+Description=SM-Adviser intraday price refresh
+Wants=docker.service
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=sharath
+WorkingDirectory=/home/sharath/sm-adviser
+ExecStart=/usr/bin/docker compose --profile job run --rm intraday-run
+TimeoutStartSec=300

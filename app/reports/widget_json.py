@@ -23,8 +23,12 @@ def build_widget(data: dict, as_of: str | None = None, narrative: dict | None = 
                 "symbol": r["symbol"],
                 "name": r["name"],
                 "ltp": r["ltp"],
+                # Period returns the widget's middle column cycles through: today / 1M / 1Y.
                 "change_pct": round(r["day_change_pct"], 2) if r["day_change_pct"] is not None else None,
-                "ret_20d": r["ret_20d"],
+                "ret_20d": r["ret_20d"],      # ~1 month
+                "ret_252d": r["ret_252d"],    # ~1 year
+                "return_pct": r["return_pct"],  # since-purchase return %
+                "pnl": round(r["pnl"], 0) if r.get("pnl") is not None else None,  # since-purchase ₹ gain
                 "rel_strength": r["rel_strength"],
                 "classification": r.get("classification"),
                 "confidence": r.get("confidence"),
@@ -40,6 +44,7 @@ def build_widget(data: dict, as_of: str | None = None, narrative: dict | None = 
             "value": p["value"],
             "day_change_pct": p["day_change_pct"],
             "total_pnl": p["total_pnl"],
+            "total_return_pct": p.get("total_return_pct"),
             "attention_count": p["attention_count"],
         },
         "holdings": holdings,

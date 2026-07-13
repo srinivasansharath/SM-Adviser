@@ -36,7 +36,7 @@ from ..storage.db import default_session_factory
 from ..storage.models import Holding, LLMCall, MarketFlow, Metric, OrderFlow, Report, Snapshot
 
 # Enough history for the 200-day moving average; short-window metrics use the tail.
-_MA_HISTORY_DAYS = 210
+_MA_HISTORY_DAYS = 260  # enough candles for the 200-DMA and the ~252-day (1-year) return
 
 
 def _holding_value(h: dict) -> float:

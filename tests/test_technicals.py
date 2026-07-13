@@ -58,8 +58,8 @@ def test_insufficient_history_returns_none():
 def test_compute_metrics_keys_match_model_columns():
     m = t.compute_metrics(candles(list(range(100, 125))), candles(list(range(100, 125))))
     assert set(m) == {
-        "ret_1d", "ret_5d", "ret_20d", "drawdown", "rsi", "vol_spike", "rel_strength",
-        "sma_20", "sma_50", "sma_200",
+        "ret_1d", "ret_5d", "ret_20d", "ret_252d", "drawdown", "rsi", "vol_spike",
+        "rel_strength", "sma_20", "sma_50", "sma_200",
     }
 
 

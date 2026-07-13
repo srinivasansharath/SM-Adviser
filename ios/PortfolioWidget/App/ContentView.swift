@@ -27,6 +27,10 @@ struct DashboardView: View {
     @State private var data: WidgetData?
     @State private var error: String?
     @State private var loading = false
+    // Shared with the widget via the App Group, so the picker and the widget stay in sync.
+    @AppStorage(PeriodStore.key, store: UserDefaults(suiteName: AppConfig.appGroup))
+    private var periodRaw = 0
+    private var period: Period { Period(rawValue: periodRaw) ?? .today }
 
     var body: some View {
         List {
@@ -36,31 +40,66 @@ struct DashboardView: View {
                 } else if let error {
                     Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.red)
                 } else if let data {
-                    HStack {
-                        Text("Portfolio").bold()
+                    HStack(alignment: .firstTextBaseline) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Portfolio").bold()
+                            Text("₹\(Int(data.portfolio.value).formatted())").font(.title3).monospacedDigit()
+                        }
                         Spacer()
-                        Text("₹\(Int(data.portfolio.value).formatted())").monospacedDigit()
-                        Text(Style.pct(data.portfolio.dayChangePct))
-                            .foregroundStyle((data.portfolio.dayChangePct ?? 0) >= 0 ? .green : .red)
+                        VStack(alignment: .trailing, spacing: 2) {
+                            if let tr = data.portfolio.totalReturnPct {
+                                Text("\(Style.pct(tr)) total").bold()
+                                    .foregroundStyle(tr >= 0 ? .green : .red)
+                            }
+                            Text("\(Style.pct(data.portfolio.dayChangePct)) today").font(.caption)
+                                .foregroundStyle((data.portfolio.dayChangePct ?? 0) >= 0 ? .green : .red)
+                        }
                     }
                     if let h = data.headline { Text(h).font(.footnote).foregroundStyle(.secondary) }
+                    let t = MarketClock.shortTime(data.pricesAsOf)
+                    if !t.isEmpty {
+                        Text("Prices as of \(t) IST").font(.caption2).foregroundStyle(.secondary)
+                    }
                 }
             }
 
             if let data {
-                Section("Holdings") {
+                Section {
+                    Picker("Period", selection: $periodRaw) {
+                        Text("Today").tag(0)
+                        Text("1 Month").tag(1)
+                        Text("1 Year").tag(2)
+                    }
+                    .pickerStyle(.segmented)
+
                     ForEach(data.holdings) { h in
-                        HStack {
+                        HStack(spacing: 8) {
                             Circle().fill(Style.color(classification: h.classification, flag: h.flag)).frame(width: 8, height: 8)
                             VStack(alignment: .leading) {
                                 Text(h.symbol).bold()
                                 Text(h.classification ?? h.flag ?? "").font(.caption).foregroundStyle(.secondary)
                             }
                             Spacer()
-                            Text("₹\(Style.price(h.ltp))").monospacedDigit()
-                            Text(Style.pct(h.changePct)).font(.caption)
-                                .foregroundStyle((h.changePct ?? 0) >= 0 ? .green : .red)
+                            // Selected-period return + current price
+                            VStack(alignment: .trailing, spacing: 1) {
+                                Text(Style.pct(period.value(h))).font(.subheadline).monospacedDigit()
+                                    .foregroundStyle((period.value(h) ?? 0) >= 0 ? .green : .red)
+                                    .lineLimit(1).minimumScaleFactor(0.6)
+                                Text("₹\(Style.price(h.ltp))").font(.caption2).foregroundStyle(.secondary).monospacedDigit()
+                            }.frame(width: 78, alignment: .trailing)
+                            // Since-purchase return % + ₹ gain
+                            VStack(alignment: .trailing, spacing: 1) {
+                                Text(Style.pct(h.returnPct)).font(.subheadline).bold().monospacedDigit()
+                                    .foregroundStyle((h.returnPct ?? 0) >= 0 ? .green : .red)
+                                    .lineLimit(1).minimumScaleFactor(0.6)
+                                Text(Style.rupeeShort(h.pnl)).font(.caption2).foregroundStyle(.secondary).monospacedDigit()
+                                    .lineLimit(1).minimumScaleFactor(0.7)
+                            }.frame(width: 84, alignment: .trailing)
                         }
+                    }
+                } header: {
+                    HStack {
+                        Text("Holdings"); Spacer(); Text("\(period.label)  ·  Since buy")
                     }
                 }
             }
@@ -77,6 +116,7 @@ struct DashboardView: View {
         }
         .navigationTitle("SM Adviser")
         .task { await load() }
+        .onChange(of: periodRaw) { WidgetCenter.shared.reloadAllTimelines() }
     }
 
     private func load() async {

@@ -64,5 +64,21 @@ services:
       - ./:/app
     command: ["python", "-m", "app.jobs.morning_run"]
 
+  # Lightweight intraday price refresh (widget.json only, no DB/LLM). A systemd timer runs
+  # this every ~15 min during market hours; the job no-ops outside 09:15-15:30 IST.
+  intraday-run:
+    build: .
+    image: sm-adviser:latest
+    profiles: ["job"]
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://portfolio:${POSTGRES_PASSWORD}@db:5432/portfolio
+    volumes:
+      - ./:/app
+    command: ["python", "-m", "app.jobs.intraday_refresh"]
+
 volumes:
   pgdata:

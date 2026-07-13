@@ -40,4 +40,14 @@ enum Style {
         guard let v else { return "—" }
         return String(format: "%+.2f%%", v)
     }
+
+    /// Signed, compact rupee amount using Indian units (k / L / Cr). e.g. +₹1.26L, -₹9.2k.
+    static func rupeeShort(_ v: Double?) -> String {
+        guard let v else { return "—" }
+        let a = abs(v), sign = v < 0 ? "-" : "+"
+        if a >= 1e7 { return "\(sign)₹\(String(format: "%.2f", a / 1e7))Cr" }
+        if a >= 1e5 { return "\(sign)₹\(String(format: "%.2f", a / 1e5))L" }
+        if a >= 1e3 { return "\(sign)₹\(String(format: "%.1f", a / 1e3))k" }
+        return "\(sign)₹\(Int(a))"
+    }
 }

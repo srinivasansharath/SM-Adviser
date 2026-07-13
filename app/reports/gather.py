@@ -8,7 +8,7 @@ from ..storage.models import Holding, MarketFlow, Metric, OrderFlow, Recommendat
 from .signals import evaluate_flags
 
 _METRIC_FIELDS = (
-    "ret_1d", "ret_5d", "ret_20d", "drawdown", "rsi", "vol_spike", "rel_strength",
+    "ret_1d", "ret_5d", "ret_20d", "ret_252d", "drawdown", "rsi", "vol_spike", "rel_strength",
     "sma_20", "sma_50", "sma_200",
 )
 
@@ -39,6 +39,8 @@ def gather_report_data(session, run_date: date, config: dict) -> dict:
 
     total_value = sum(h.ltp * h.qty for h in holdings)
     total_pnl = sum((h.pnl or 0) for h in holdings)
+    cost_basis = sum(h.avg_price * h.qty for h in holdings)
+    total_return_pct = round(total_pnl / cost_basis * 100, 2) if cost_basis else None
 
     rows = []
     for h in holdings:
@@ -54,6 +56,10 @@ def gather_report_data(session, run_date: date, config: dict) -> dict:
                 "avg_price": h.avg_price,
                 "ltp": h.ltp,
                 "pnl": h.pnl,
+                # Since-purchase return: current vs average buy price. Always available.
+                "return_pct": (
+                    round((h.ltp / h.avg_price - 1) * 100, 2) if h.avg_price else None
+                ),
                 "weight_pct": h.weight_pct,
                 "day_change_pct": day_change.get(h.symbol),
                 "above_50dma": (h.ltp >= md["sma_50"]) if md["sma_50"] else None,
@@ -91,6 +97,7 @@ def gather_report_data(session, run_date: date, config: dict) -> dict:
         "portfolio": {
             "value": round(total_value, 2),
             "total_pnl": round(total_pnl, 2),
+            "total_return_pct": total_return_pct,
             "day_change_pct": day_change_pct,
             "top5_pct": round(sum((r["weight_pct"] or 0) for r in rows[:5]), 1),
             "holdings_count": len(rows),

@@ -1,25 +1,32 @@
 import SwiftUI
 import WidgetKit
 
-struct ChangePill: View {
+/// Colored percentage text used in the period + since-purchase columns.
+struct PctText: View {
     let pct: Double?
+    var size: CGFloat = 12
+    var weight: Font.Weight = .semibold
     var body: some View {
-        let up = (pct ?? 0) >= 0
         Text(Style.pct(pct))
-            .font(.system(size: 10, weight: .semibold, design: .rounded))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 5).padding(.vertical, 1)
-            .background((up ? Color.green : Color.red).opacity(0.9), in: RoundedRectangle(cornerRadius: 4))
+            .font(.system(size: size, weight: weight, design: .rounded))
+            .foregroundStyle((pct ?? 0) >= 0 ? Color.green : Color.red)
+            .monospacedDigit()
+            .lineLimit(1)
+            .minimumScaleFactor(0.6)   // shrink rather than wrap large returns like +636.92%
     }
 }
 
+private let kCol: CGFloat = 74   // fixed width for the two trailing columns (keeps them aligned)
+
 struct HoldingRow: View {
     let h: Holding
+    let period: Period
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 6) {
             RoundedRectangle(cornerRadius: 2)
                 .fill(Style.color(classification: h.classification, flag: h.flag))
-                .frame(width: 3, height: 30)
+                .frame(width: 3, height: 26)
+            // Column 1 — stock + recommendation
             VStack(alignment: .leading, spacing: 1) {
                 Text(h.symbol).font(.system(size: 13, weight: .semibold))
                 Text(Style.shortLabel(h.classification).isEmpty ? (h.name ?? "") : Style.shortLabel(h.classification))
@@ -27,10 +34,40 @@ struct HoldingRow: View {
                     .foregroundStyle(.secondary)
             }
             Spacer(minLength: 4)
-            VStack(alignment: .trailing, spacing: 2) {
-                Text("₹\(Style.price(h.ltp))").font(.system(size: 13, weight: .medium, design: .rounded))
-                ChangePill(pct: h.changePct)
+            // Column 2 — selected period return, with the current price beneath it
+            VStack(alignment: .trailing, spacing: 1) {
+                PctText(pct: period.value(h))
+                Text("₹\(Style.price(h.ltp))").font(.system(size: 9)).foregroundStyle(.secondary).monospacedDigit()
+            }.frame(width: kCol, alignment: .trailing)
+            // Column 3 — since-purchase return %, with the ₹ gain beneath it
+            VStack(alignment: .trailing, spacing: 1) {
+                PctText(pct: h.returnPct, size: 13, weight: .bold)
+                Text(Style.rupeeShort(h.pnl))
+                    .font(.system(size: 9)).foregroundStyle(.secondary).monospacedDigit()
+                    .lineLimit(1).minimumScaleFactor(0.7)
+            }.frame(width: kCol, alignment: .trailing)
+        }
+    }
+}
+
+/// Column labels; the period label is a tappable button that cycles Today → 1M → 1Y.
+struct ColumnHeader: View {
+    let period: Period
+    var body: some View {
+        HStack(spacing: 6) {
+            Spacer(minLength: 4)
+            Button(intent: CyclePeriodIntent()) {
+                HStack(spacing: 2) {
+                    Text(period.label)
+                    Image(systemName: "arrow.triangle.2.circlepath").font(.system(size: 7, weight: .bold))
+                }
+                .font(.system(size: 9, weight: .bold))
+                .foregroundStyle(.blue)
             }
+            .buttonStyle(.plain)
+            .frame(width: kCol, alignment: .trailing)
+            Text("Return").font(.system(size: 9, weight: .bold)).foregroundStyle(.secondary)
+                .frame(width: kCol, alignment: .trailing)
         }
     }
 }
@@ -45,7 +82,12 @@ struct PortfolioHeader: View {
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 1) {
-                ChangePill(pct: data.portfolio.dayChangePct)
+                // Since-purchase total return is the headline for a long-term investor.
+                if let tr = data.portfolio.totalReturnPct {
+                    Text("\(Style.pct(tr)) total")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(tr >= 0 ? .green : .red)
+                }
                 if let a = data.portfolio.attentionCount, a > 0 {
                     Text("\(a) to review").font(.system(size: 9, weight: .medium)).foregroundStyle(.orange)
                 }
@@ -56,13 +98,19 @@ struct PortfolioHeader: View {
 
 struct ListView: View {
     let data: WidgetData
+    let period: Period
     let maxRows: Int
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
+        VStack(alignment: .leading, spacing: 3) {
             PortfolioHeader(data: data)
+            ColumnHeader(period: period)
             Divider()
-            ForEach(data.holdings.prefix(maxRows)) { HoldingRow(h: $0) }
+            ForEach(data.holdings.prefix(maxRows)) { HoldingRow(h: $0, period: period) }
             Spacer(minLength: 0)
+            let t = MarketClock.shortTime(data.pricesAsOf)
+            if !t.isEmpty {
+                Text("Prices as of \(t)").font(.system(size: 8)).foregroundStyle(.secondary)
+            }
         }
     }
 }
@@ -73,7 +121,11 @@ struct SmallView: View {
         VStack(alignment: .leading, spacing: 3) {
             Text("SM Adviser").font(.system(size: 9, weight: .bold)).foregroundStyle(.secondary)
             Text("₹\(Int(data.portfolio.value).formatted())").font(.system(size: 18, weight: .bold, design: .rounded))
-            ChangePill(pct: data.portfolio.dayChangePct)
+            if let tr = data.portfolio.totalReturnPct {
+                Text("\(Style.pct(tr)) total")
+                    .font(.system(size: 11, weight: .bold, design: .rounded))
+                    .foregroundStyle(tr >= 0 ? .green : .red)
+            }
             Spacer(minLength: 2)
             if let a = data.portfolio.attentionCount {
                 Text(a > 0 ? "\(a) need attention" : "All clear")

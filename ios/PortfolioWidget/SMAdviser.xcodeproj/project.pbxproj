@@ -8,19 +8,25 @@
 
 /* Begin PBXBuildFile section */
 		1974BBCF35F9540DE06CBBF7 /* WidgetModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01843D66CBEF18300C43A033 /* WidgetModels.swift */; };
+		2FF2ABEA4A408D5DF3A88CFA /* Period.swift in Sources */ = {isa = PBXBuildFile; fileRef = C767AB98BCA0BE48448B1A80 /* Period.swift */; };
 		39DE7057429466AE3E1BBF76 /* SMAdviserApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 840C4638B368155C72E322EB /* SMAdviserApp.swift */; };
 		3A8335AF513006DDC074918E /* PortfolioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D0CB050AF84EFAF3193DAB0 /* PortfolioService.swift */; };
 		511F03699104EE0EC2EA20F5 /* PortfolioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D0CB050AF84EFAF3193DAB0 /* PortfolioService.swift */; };
 		68C67547D5A5026E3D43797F /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB69A6D57F6E555183291122 /* AppConfig.swift */; };
+		775E0E061E2293B13E0F8374 /* CyclePeriodIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E1F33F6AAACD9A25DFC4F30 /* CyclePeriodIntent.swift */; };
 		83E13A1D6F1BB6E40B254DFB /* WidgetModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01843D66CBEF18300C43A033 /* WidgetModels.swift */; };
 		84E55C1BF8168325AD9AB085 /* WidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC0B4B7BE865B8CDB01A81A6 /* WidgetViews.swift */; };
 		92612598AB42BCCC9988F75D /* SetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26301F47DD22AF4766C1EDA1 /* SetupView.swift */; };
 		AAA49AB296BA731D92456BFA /* Styles.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4168E4C6ECE1003CDE13C52 /* Styles.swift */; };
 		B424590060DF2193E967BDB8 /* PortfolioWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6402602DF58BAABA60DF7341 /* PortfolioWidget.swift */; };
+		B544A577920F19676503EF54 /* MarketClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E602426CE5496F83F115FD8 /* MarketClock.swift */; };
+		C130045BA9E62F13CB366B3F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0FCEE064512F061D4E3A26F3 /* Assets.xcassets */; };
 		C88BF6220626DABAACF10717 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 111C0E2C60088035A32B6193 /* ContentView.swift */; };
 		CD9EDA94DED3CA8B42F5F30D /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB69A6D57F6E555183291122 /* AppConfig.swift */; };
 		D330C727B3546CE8FA46E41E /* PortfolioWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 8D051A35513C1B91902567B1 /* PortfolioWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		D4BE2CD69C6B3205B6839B67 /* MarketClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E602426CE5496F83F115FD8 /* MarketClock.swift */; };
 		F341E6B24E92735512FC1A49 /* Styles.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4168E4C6ECE1003CDE13C52 /* Styles.swift */; };
+		FA39154D5DDC486FCF2DBC5B /* Period.swift in Sources */ = {isa = PBXBuildFile; fileRef = C767AB98BCA0BE48448B1A80 /* Period.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -49,16 +55,20 @@
 
 /* Begin PBXFileReference section */
 		01843D66CBEF18300C43A033 /* WidgetModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetModels.swift; sourceTree = "<group>"; };
+		0FCEE064512F061D4E3A26F3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		111C0E2C60088035A32B6193 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		26301F47DD22AF4766C1EDA1 /* SetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupView.swift; sourceTree = "<group>"; };
 		2AED2D31C303A1E635F9CDC4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		3E1F33F6AAACD9A25DFC4F30 /* CyclePeriodIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CyclePeriodIntent.swift; sourceTree = "<group>"; };
 		415632F983E54D9FDBF3096B /* SMAdviser.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SMAdviser.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		6402602DF58BAABA60DF7341 /* PortfolioWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortfolioWidget.swift; sourceTree = "<group>"; };
 		7A3697EE216D53455284A739 /* SMAdviser.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SMAdviser.entitlements; sourceTree = "<group>"; };
 		7D0CB050AF84EFAF3193DAB0 /* PortfolioService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortfolioService.swift; sourceTree = "<group>"; };
+		7E602426CE5496F83F115FD8 /* MarketClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketClock.swift; sourceTree = "<group>"; };
 		840C4638B368155C72E322EB /* SMAdviserApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMAdviserApp.swift; sourceTree = "<group>"; };
 		8D051A35513C1B91902567B1 /* PortfolioWidgetExtension.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = PortfolioWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		BF1C0F9D49E4CEE3576A5DA3 /* PortfolioWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PortfolioWidget.entitlements; sourceTree = "<group>"; };
+		C767AB98BCA0BE48448B1A80 /* Period.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Period.swift; sourceTree = "<group>"; };
 		CB04A5F85B5E04114578B477 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		EB69A6D57F6E555183291122 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
 		F4168E4C6ECE1003CDE13C52 /* Styles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Styles.swift; sourceTree = "<group>"; };
@@ -79,6 +89,8 @@
 			isa = PBXGroup;
 			children = (
 				EB69A6D57F6E555183291122 /* AppConfig.swift */,
+				7E602426CE5496F83F115FD8 /* MarketClock.swift */,
+				C767AB98BCA0BE48448B1A80 /* Period.swift */,
 				7D0CB050AF84EFAF3193DAB0 /* PortfolioService.swift */,
 				F4168E4C6ECE1003CDE13C52 /* Styles.swift */,
 				01843D66CBEF18300C43A033 /* WidgetModels.swift */,
@@ -89,6 +101,7 @@
 		B242818AFF0207F4F31A0AB7 /* Widget */ = {
 			isa = PBXGroup;
 			children = (
+				3E1F33F6AAACD9A25DFC4F30 /* CyclePeriodIntent.swift */,
 				CB04A5F85B5E04114578B477 /* Info.plist */,
 				BF1C0F9D49E4CEE3576A5DA3 /* PortfolioWidget.entitlements */,
 				6402602DF58BAABA60DF7341 /* PortfolioWidget.swift */,
@@ -100,6 +113,7 @@
 		DFBDD8F35E28A904A4A637E4 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				0FCEE064512F061D4E3A26F3 /* Assets.xcassets */,
 				111C0E2C60088035A32B6193 /* ContentView.swift */,
 				2AED2D31C303A1E635F9CDC4 /* Info.plist */,
 				26301F47DD22AF4766C1EDA1 /* SetupView.swift */,
@@ -144,6 +158,7 @@
 			buildConfigurationList = B742CA18AE8193CA157ED076 /* Build configuration list for PBXNativeTarget "SMAdviser" */;
 			buildPhases = (
 				EF238B7258100682C5E2F867 /* Sources */,
+				C9E94C7ABABE5DBA85C38CBC /* Resources */,
 				B4F5F0A874B468340FB7FDFE /* Embed Foundation Extensions */,
 			);
 			buildRules = (
@@ -167,6 +182,12 @@
 				BuildIndependentTargetsInParallel = YES;
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
+					0F050588146970E23F91064F = {
+						ProvisioningStyle = Automatic;
+					};
+					63B0DF9C188F2112FEC33BA1 = {
+						ProvisioningStyle = Automatic;
+					};
 				};
 			};
 			buildConfigurationList = 1CA46E7C1EADD3EF9C7AF47B /* Build configuration list for PBXProject "SMAdviser" */;
@@ -189,12 +210,26 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXResourcesBuildPhase section */
+		C9E94C7ABABE5DBA85C38CBC /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C130045BA9E62F13CB366B3F /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		98384115898EE3336F490A19 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				CD9EDA94DED3CA8B42F5F30D /* AppConfig.swift in Sources */,
+				775E0E061E2293B13E0F8374 /* CyclePeriodIntent.swift in Sources */,
+				D4BE2CD69C6B3205B6839B67 /* MarketClock.swift in Sources */,
+				FA39154D5DDC486FCF2DBC5B /* Period.swift in Sources */,
 				3A8335AF513006DDC074918E /* PortfolioService.swift in Sources */,
 				B424590060DF2193E967BDB8 /* PortfolioWidget.swift in Sources */,
 				AAA49AB296BA731D92456BFA /* Styles.swift in Sources */,
@@ -209,6 +244,8 @@
 			files = (
 				68C67547D5A5026E3D43797F /* AppConfig.swift in Sources */,
 				C88BF6220626DABAACF10717 /* ContentView.swift in Sources */,
+				B544A577920F19676503EF54 /* MarketClock.swift in Sources */,
+				2FF2ABEA4A408D5DF3A88CFA /* Period.swift in Sources */,
 				511F03699104EE0EC2EA20F5 /* PortfolioService.swift in Sources */,
 				39DE7057429466AE3E1BBF76 /* SMAdviserApp.swift in Sources */,
 				92612598AB42BCCC9988F75D /* SetupView.swift in Sources */,
@@ -277,6 +314,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
@@ -354,6 +392,7 @@
 				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
 				CURRENT_PROJECT_VERSION = 1;
 				DEBUG_INFORMATION_FORMAT = dwarf;

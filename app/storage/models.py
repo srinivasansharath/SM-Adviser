@@ -57,6 +57,7 @@ class Metric(Base):
     ret_1d: Mapped[float | None] = mapped_column(Float, nullable=True)
     ret_5d: Mapped[float | None] = mapped_column(Float, nullable=True)
     ret_20d: Mapped[float | None] = mapped_column(Float, nullable=True)
+    ret_252d: Mapped[float | None] = mapped_column(Float, nullable=True)  # ~1 trading year
     drawdown: Mapped[float | None] = mapped_column(Float, nullable=True)
     rsi: Mapped[float | None] = mapped_column(Float, nullable=True)
     vol_spike: Mapped[float | None] = mapped_column(Float, nullable=True)
