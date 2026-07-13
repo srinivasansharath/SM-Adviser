@@ -41,4 +41,12 @@ enum SettingsStore {
     static var token: String { load()?.token ?? "" }
     static var widgetURL: URL? { load().flatMap { URL(string: $0.baseURL + "/widget.json") } }
     static var healthURL: URL? { load().flatMap { URL(string: $0.baseURL + "/health") } }
+    static var reportURL: URL? { load().flatMap { URL(string: $0.baseURL + "/report/latest") } }
+
+    /// URL of the server-rendered analysis one-pager for a holding.
+    static func stockURL(_ symbol: String) -> URL? {
+        guard let base = load()?.baseURL else { return nil }
+        let enc = symbol.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? symbol
+        return URL(string: base + "/stock/" + enc)
+    }
 }

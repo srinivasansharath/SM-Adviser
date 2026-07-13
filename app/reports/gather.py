@@ -4,17 +4,23 @@ from __future__ import annotations
 
 from datetime import date
 
-from ..storage.models import Holding, MarketFlow, Metric, OrderFlow, Recommendation, Snapshot
+from ..storage.models import Holding, MarketFlow, Metric, OrderFlow, Recommendation, Score, Snapshot
 from .signals import evaluate_flags
 
 _METRIC_FIELDS = (
     "ret_1d", "ret_5d", "ret_20d", "ret_252d", "drawdown", "rsi", "vol_spike", "rel_strength",
     "sma_20", "sma_50", "sma_200",
 )
+# The six sub-scores (spec §8), for the per-stock analysis one-pager.
+_SCORE_FIELDS = ("technical", "fundamental", "valuation", "portfolio_fit", "thesis", "news_risk")
 
 
 def _metric_dict(m: Metric | None) -> dict:
     return {f: getattr(m, f) for f in _METRIC_FIELDS} if m else {f: None for f in _METRIC_FIELDS}
+
+
+def _score_dict(s: Score | None) -> dict:
+    return {f: getattr(s, f) for f in _SCORE_FIELDS} if s else {f: None for f in _SCORE_FIELDS}
 
 
 def _of_dict(o: OrderFlow | None) -> dict:
@@ -28,7 +34,12 @@ def gather_report_data(session, run_date: date, config: dict) -> dict:
     metrics = {m.symbol: m for m in session.query(Metric).filter_by(run_date=run_date)}
     flows = {o.symbol: o for o in session.query(OrderFlow).filter_by(run_date=run_date)}
     recs = {r.symbol: r for r in session.query(Recommendation).filter_by(run_date=run_date)}
+    scores = {s.symbol: s for s in session.query(Score).filter_by(run_date=run_date)}
     market_flow = session.query(MarketFlow).filter_by(run_date=run_date).first()
+
+    # Fundamentals were snapshotted for audit (kind='fundamentals') as {symbol: {ratios}}.
+    fsnap = session.query(Snapshot).filter_by(run_date=run_date, kind="fundamentals").first()
+    fundamentals = fsnap.payload if fsnap and isinstance(fsnap.payload, dict) else {}
 
     # Real intraday day-change comes from the frozen holdings snapshot (Kite payload).
     snap = session.query(Snapshot).filter_by(run_date=run_date, kind="holdings").first()
@@ -69,6 +80,9 @@ def gather_report_data(session, run_date: date, config: dict) -> dict:
                 "confidence": rec.confidence if rec else None,
                 "prev_classification": rec.prev_classification if rec else None,
                 "rec_reason": rec.reason if rec else None,
+                # Analysis one-pager inputs: the six sub-scores + fundamentals ratios.
+                "scores": _score_dict(scores.get(h.symbol)),
+                "fundamentals": fundamentals.get(h.symbol) or {},
                 **md,
                 **ofd,
                 **flags,

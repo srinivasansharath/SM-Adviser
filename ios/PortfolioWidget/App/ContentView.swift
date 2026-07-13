@@ -73,6 +73,9 @@ struct DashboardView: View {
                     .pickerStyle(.segmented)
 
                     ForEach(data.holdings) { h in
+                        NavigationLink {
+                            StockDetailView(symbol: h.symbol)
+                        } label: {
                         HStack(spacing: 8) {
                             Circle().fill(Style.color(classification: h.classification, flag: h.flag)).frame(width: 8, height: 8)
                             VStack(alignment: .leading) {
@@ -96,6 +99,7 @@ struct DashboardView: View {
                                     .lineLimit(1).minimumScaleFactor(0.7)
                             }.frame(width: 84, alignment: .trailing)
                         }
+                        }
                     }
                 } header: {
                     HStack {
@@ -105,6 +109,11 @@ struct DashboardView: View {
             }
 
             Section {
+                NavigationLink {
+                    WebReportView(title: "Daily Report", url: SettingsStore.reportURL, pdfName: "SM Adviser Report")
+                } label: {
+                    Label("Full report (view / share)", systemImage: "doc.text")
+                }
                 Button { Task { await load() } } label: { Label("Refresh now", systemImage: "arrow.clockwise") }
                 Button { WidgetCenter.shared.reloadAllTimelines() } label: {
                     Label("Reload home-screen widgets", systemImage: "square.grid.2x2")

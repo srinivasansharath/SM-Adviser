@@ -11,6 +11,7 @@
 		2FF2ABEA4A408D5DF3A88CFA /* Period.swift in Sources */ = {isa = PBXBuildFile; fileRef = C767AB98BCA0BE48448B1A80 /* Period.swift */; };
 		39DE7057429466AE3E1BBF76 /* SMAdviserApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 840C4638B368155C72E322EB /* SMAdviserApp.swift */; };
 		3A8335AF513006DDC074918E /* PortfolioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D0CB050AF84EFAF3193DAB0 /* PortfolioService.swift */; };
+		4969FC5A3D04E453BDE575A3 /* StockDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005CD0C9D3CAAD59DB2A0BD9 /* StockDetailView.swift */; };
 		511F03699104EE0EC2EA20F5 /* PortfolioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D0CB050AF84EFAF3193DAB0 /* PortfolioService.swift */; };
 		68C67547D5A5026E3D43797F /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB69A6D57F6E555183291122 /* AppConfig.swift */; };
 		775E0E061E2293B13E0F8374 /* CyclePeriodIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E1F33F6AAACD9A25DFC4F30 /* CyclePeriodIntent.swift */; };
@@ -54,6 +55,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		005CD0C9D3CAAD59DB2A0BD9 /* StockDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StockDetailView.swift; sourceTree = "<group>"; };
 		01843D66CBEF18300C43A033 /* WidgetModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetModels.swift; sourceTree = "<group>"; };
 		0FCEE064512F061D4E3A26F3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		111C0E2C60088035A32B6193 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -119,6 +121,7 @@
 				26301F47DD22AF4766C1EDA1 /* SetupView.swift */,
 				7A3697EE216D53455284A739 /* SMAdviser.entitlements */,
 				840C4638B368155C72E322EB /* SMAdviserApp.swift */,
+				005CD0C9D3CAAD59DB2A0BD9 /* StockDetailView.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -249,6 +252,7 @@
 				511F03699104EE0EC2EA20F5 /* PortfolioService.swift in Sources */,
 				39DE7057429466AE3E1BBF76 /* SMAdviserApp.swift in Sources */,
 				92612598AB42BCCC9988F75D /* SetupView.swift in Sources */,
+				4969FC5A3D04E453BDE575A3 /* StockDetailView.swift in Sources */,
 				F341E6B24E92735512FC1A49 /* Styles.swift in Sources */,
 				1974BBCF35F9540DE06CBBF7 /* WidgetModels.swift in Sources */,
 			);

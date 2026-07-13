@@ -31,6 +31,7 @@ from ..reasoning.prompts import build_user_prompt
 from ..reasoning.recommender import run_scoring
 from ..reports.daily_report import exec_summary_line, write_report
 from ..reports.gather import gather_report_data
+from ..reports.stock_page import write_stock_pages
 from ..reports.widget_json import write_widget
 from ..storage.db import default_session_factory
 from ..storage.models import Holding, LLMCall, MarketFlow, Metric, OrderFlow, Report, Snapshot
@@ -137,6 +138,7 @@ def _render_outputs(session_factory: sessionmaker, run_date: date, config: dict,
     md_path, html_path = write_report(data, output_dir, narrative=narrative)
     as_of = datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds")
     widget_path = write_widget(data, output_dir, as_of=as_of, narrative=narrative)
+    stock_pages = write_stock_pages(data, output_dir, narrative=narrative)
 
     with session_factory() as session:
         session.query(Report).filter(Report.run_date == run_date).delete()
@@ -145,7 +147,8 @@ def _render_outputs(session_factory: sessionmaker, run_date: date, config: dict,
         session.add(Report(run_date=run_date, format="widget", path=str(widget_path)))
         session.commit()
 
-    return {"report": str(md_path), "html": str(html_path), "widget": str(widget_path)}
+    return {"report": str(md_path), "html": str(html_path), "widget": str(widget_path),
+            "stock_pages": len(stock_pages)}
 
 
 def run(

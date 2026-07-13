@@ -8,6 +8,7 @@ NUC); left open only for local dev, where it also sits behind Tailscale. Run wit
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, Header, HTTPException
@@ -54,3 +55,17 @@ def latest_report(_: None = Depends(require_auth), output_dir: Path = Depends(ge
     if not reports:
         raise HTTPException(status_code=404, detail="no report generated yet")
     return reports[-1].read_text(encoding="utf-8")
+
+
+@app.get("/stock/{symbol}", response_class=HTMLResponse)
+def stock_analysis(
+    symbol: str,
+    _: None = Depends(require_auth),
+    output_dir: Path = Depends(get_output_dir),
+) -> str:
+    # Sanitise to the charset used in tradingsymbols; blocks path traversal.
+    safe = re.sub(r"[^A-Za-z0-9&_-]", "", symbol)
+    path = output_dir / f"stock_{safe}.html"
+    if not safe or not path.exists():
+        raise HTTPException(status_code=404, detail="no analysis for this stock yet")
+    return path.read_text(encoding="utf-8")
