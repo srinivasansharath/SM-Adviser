@@ -11,13 +11,25 @@ Trim / Exit-Candidate** with reasoning, confidence, and evidence.
 
 ## Status
 
-**Phase 0 — project skeleton.** Runs end-to-end on a **mock portfolio** with **zero credentials**:
-authenticate (mock) → fetch holdings → freeze immutable snapshot → persist per-holding rows
-with derived weights. SQLite by default; Postgres on the server via `DATABASE_URL`.
+**Working end-to-end.** The full daily pipeline runs against a live Zerodha account:
+holdings → technicals (yfinance) → fundamentals (screener.in) → six-sub-score thesis-aware
+scoring → Claude narrative → daily report + `widget.json` + per-stock analysis pages, served by
+FastAPI. A native **iOS app + home-screen widget** (in `ios/`) reads it over HTTPS, with near-live
+intraday prices and PDF-shareable analysis. Runs 24/7 in Docker (Postgres) with scheduled jobs.
 
-Roadmap and phase plan: `BUILD_PLAN.md`.
+Design rationale and phase history: `BUILD_PLAN.md`.
 
-## Quickstart
+## Run your own (self-hosting)
+
+The backend is **self-hosted** — you run it on your own always-on machine with your own Zerodha +
+Anthropic credentials; the app connects to *your* server. Full walkthrough (from `git clone` to a
+scheduled agent + the app), including a "let Claude Code do it" path:
+
+### → [`SELF_HOSTING.md`](SELF_HOSTING.md)
+
+Ops/deployment details (Docker stack, migrations, systemd timers, monitoring): [`deploy/README.md`](deploy/README.md).
+
+## Quickstart (local dev — no credentials)
 
 ```bash
 python -m venv .venv && source .venv/bin/activate
