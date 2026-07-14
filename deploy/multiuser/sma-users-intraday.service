@@ -1,0 +1,13 @@
+# Intraday price refresh for every user instance. Paired with sma-users-intraday.timer.
+[Unit]
+Description=SM-Adviser intraday refresh for all user instances
+Wants=docker.service
+After=docker.service network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=sharath
+WorkingDirectory=/home/sharath/sm-adviser
+ExecStart=/home/sharath/sm-adviser/deploy/multiuser/run-all.sh intraday-run
+TimeoutStartSec=1200

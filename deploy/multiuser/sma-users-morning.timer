@@ -1,0 +1,11 @@
+# Mon-Fri 08:10 IST (staggered after the primary's 08:00 run). NUC tz = Asia/Kolkata.
+[Unit]
+Description=Schedule SM-Adviser morning run for all user instances
+
+[Timer]
+OnCalendar=Mon-Fri 08:10:00
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

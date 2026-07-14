@@ -1,0 +1,62 @@
+# One isolated user instance: api + job containers that SHARE the primary's image, the primary
+# Postgres (a per-user database), and the primary Docker network. All per-user state (.env,
+# reports_out, kite_token) is bind-mounted over the shared code, so nothing collides.
+#
+# Never run directly — add-user.sh / run-all.sh invoke it with the right project + env file:
+#   docker compose -p sma-<name> --env-file <instance>/.env -f docker-compose.user.yml ...
+#
+# Env (from the instance .env): INSTANCE_NAME, INSTANCE_DIR, SMA_CODE, API_PORT, DATABASE_URL,
+# SHARED_NET (defaults to sm-adviser_default).
+
+x-vols: &vols
+  - ${SMA_CODE}:/app                                   # shared code
+  - ${INSTANCE_DIR}/.env:/app/.env                     # per-user secrets/runtime
+  - ${INSTANCE_DIR}/reports_out:/app/reports_out       # per-user output
+  - ${INSTANCE_DIR}/kite_token.json:/app/kite_token.json  # per-user daily token cache
+
+x-env: &env
+  env_file: ${INSTANCE_DIR}/.env
+  environment:
+    DATABASE_URL: ${DATABASE_URL}
+  networks: [shared]
+
+services:
+  api:
+    <<: *env
+    image: sm-adviser:latest
+    container_name: sma-${INSTANCE_NAME}-api
+    restart: unless-stopped
+    volumes: *vols
+    ports:
+      - "0.0.0.0:${API_PORT}:8787"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8787/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  migrate:
+    <<: *env
+    image: sm-adviser:latest
+    profiles: ["job"]
+    volumes: *vols
+    command: ["alembic", "upgrade", "head"]
+
+  morning-run:
+    <<: *env
+    image: sm-adviser:latest
+    profiles: ["job"]
+    volumes: *vols
+    command: ["python", "-m", "app.jobs.morning_run"]
+
+  intraday-run:
+    <<: *env
+    image: sm-adviser:latest
+    profiles: ["job"]
+    volumes: *vols
+    command: ["python", "-m", "app.jobs.intraday_refresh"]
+
+networks:
+  shared:
+    name: ${SHARED_NET:-sm-adviser_default}
+    external: true

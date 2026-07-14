@@ -1,0 +1,13 @@
+# Daily morning run for every registered user instance. Paired with sma-users-morning.timer.
+[Unit]
+Description=SM-Adviser morning run for all user instances
+Wants=docker.service
+After=docker.service network-online.target sm-adviser-morning.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=sharath
+WorkingDirectory=/home/sharath/sm-adviser
+ExecStart=/home/sharath/sm-adviser/deploy/multiuser/run-all.sh morning-run
+TimeoutStartSec=3600
