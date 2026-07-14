@@ -37,6 +37,7 @@ enum SettingsStore {
         defaults.removeObject(forKey: kURL)
         defaults.removeObject(forKey: kToken)
         defaults.removeObject(forKey: kDemo)
+        defaults.removeObject(forKey: kFeatures)
     }
 
     /// Demo mode: preview the app with bundled sample data, no server (for onboarding / review).
@@ -50,6 +51,22 @@ enum SettingsStore {
     static var widgetURL: URL? { load().flatMap { URL(string: $0.baseURL + "/widget.json") } }
     static var healthURL: URL? { load().flatMap { URL(string: $0.baseURL + "/health") } }
     static var reportURL: URL? { load().flatMap { URL(string: $0.baseURL + "/report/latest") } }
+    static var metaURL: URL? { load().flatMap { URL(string: $0.baseURL + "/meta") } }
+    static var thesesURL: URL? { load().flatMap { URL(string: $0.baseURL + "/theses") } }
+
+    static func thesisURL(_ symbol: String) -> URL? {
+        guard let base = load()?.baseURL else { return nil }
+        let enc = symbol.addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? symbol
+        return URL(string: base + "/theses/" + enc)
+    }
+
+    // Capabilities advertised by the connected server (/meta.features), for feature gating.
+    private static let kFeatures = "server_features"
+    static var features: [String] {
+        get { defaults.stringArray(forKey: kFeatures) ?? [] }
+        set { defaults.set(newValue, forKey: kFeatures) }
+    }
+    static func serverHas(_ feature: String) -> Bool { features.contains(feature) }
 
     /// URL of the server-rendered analysis one-pager for a holding.
     static func stockURL(_ symbol: String) -> URL? {

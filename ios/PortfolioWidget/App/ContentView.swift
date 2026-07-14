@@ -130,6 +130,7 @@ struct DashboardView: View {
 
     private func load() async {
         loading = true; error = nil
+        await PortfolioService.refreshMeta()   // capability negotiation (gates the thesis editor etc.)
         let r = await PortfolioService.fetch()
         data = r.data; error = r.error; loading = false
     }

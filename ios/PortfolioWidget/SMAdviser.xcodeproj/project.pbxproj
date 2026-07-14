@@ -11,6 +11,7 @@
 		2FF2ABEA4A408D5DF3A88CFA /* Period.swift in Sources */ = {isa = PBXBuildFile; fileRef = C767AB98BCA0BE48448B1A80 /* Period.swift */; };
 		39DE7057429466AE3E1BBF76 /* SMAdviserApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 840C4638B368155C72E322EB /* SMAdviserApp.swift */; };
 		3A8335AF513006DDC074918E /* PortfolioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D0CB050AF84EFAF3193DAB0 /* PortfolioService.swift */; };
+		4851D8C3B19CE02D13A245DC /* ThesisEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9D480A7D2DE68CA34C078AB /* ThesisEditorView.swift */; };
 		4969FC5A3D04E453BDE575A3 /* StockDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005CD0C9D3CAAD59DB2A0BD9 /* StockDetailView.swift */; };
 		511F03699104EE0EC2EA20F5 /* PortfolioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D0CB050AF84EFAF3193DAB0 /* PortfolioService.swift */; };
 		5A21912D49DABE888817049D /* DemoStock.html in Resources */ = {isa = PBXBuildFile; fileRef = 5FB4E7B631B9E72C35867CF4 /* DemoStock.html */; };
@@ -22,8 +23,10 @@
 		AAA49AB296BA731D92456BFA /* Styles.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4168E4C6ECE1003CDE13C52 /* Styles.swift */; };
 		B424590060DF2193E967BDB8 /* PortfolioWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6402602DF58BAABA60DF7341 /* PortfolioWidget.swift */; };
 		B544A577920F19676503EF54 /* MarketClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E602426CE5496F83F115FD8 /* MarketClock.swift */; };
+		BB2F0085B5B1D752B4AAC01F /* ThesisModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2D2C19454644C4CED3E73DB /* ThesisModels.swift */; };
 		C130045BA9E62F13CB366B3F /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0FCEE064512F061D4E3A26F3 /* Assets.xcassets */; };
 		C88BF6220626DABAACF10717 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 111C0E2C60088035A32B6193 /* ContentView.swift */; };
+		CBB0080EE2179E196C2B992D /* ThesisModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2D2C19454644C4CED3E73DB /* ThesisModels.swift */; };
 		CD9EDA94DED3CA8B42F5F30D /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB69A6D57F6E555183291122 /* AppConfig.swift */; };
 		D330C727B3546CE8FA46E41E /* PortfolioWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 8D051A35513C1B91902567B1 /* PortfolioWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		D4BE2CD69C6B3205B6839B67 /* MarketClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E602426CE5496F83F115FD8 /* MarketClock.swift */; };
@@ -74,7 +77,9 @@
 		BF1C0F9D49E4CEE3576A5DA3 /* PortfolioWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = PortfolioWidget.entitlements; sourceTree = "<group>"; };
 		C767AB98BCA0BE48448B1A80 /* Period.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Period.swift; sourceTree = "<group>"; };
 		CB04A5F85B5E04114578B477 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		D9D480A7D2DE68CA34C078AB /* ThesisEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThesisEditorView.swift; sourceTree = "<group>"; };
 		EB69A6D57F6E555183291122 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
+		F2D2C19454644C4CED3E73DB /* ThesisModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThesisModels.swift; sourceTree = "<group>"; };
 		F4168E4C6ECE1003CDE13C52 /* Styles.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Styles.swift; sourceTree = "<group>"; };
 		FC0B4B7BE865B8CDB01A81A6 /* WidgetViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetViews.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -97,6 +102,7 @@
 				C767AB98BCA0BE48448B1A80 /* Period.swift */,
 				7D0CB050AF84EFAF3193DAB0 /* PortfolioService.swift */,
 				F4168E4C6ECE1003CDE13C52 /* Styles.swift */,
+				F2D2C19454644C4CED3E73DB /* ThesisModels.swift */,
 				01843D66CBEF18300C43A033 /* WidgetModels.swift */,
 			);
 			path = Shared;
@@ -125,6 +131,7 @@
 				7A3697EE216D53455284A739 /* SMAdviser.entitlements */,
 				840C4638B368155C72E322EB /* SMAdviserApp.swift */,
 				005CD0C9D3CAAD59DB2A0BD9 /* StockDetailView.swift */,
+				D9D480A7D2DE68CA34C078AB /* ThesisEditorView.swift */,
 			);
 			path = App;
 			sourceTree = "<group>";
@@ -240,6 +247,7 @@
 				3A8335AF513006DDC074918E /* PortfolioService.swift in Sources */,
 				B424590060DF2193E967BDB8 /* PortfolioWidget.swift in Sources */,
 				AAA49AB296BA731D92456BFA /* Styles.swift in Sources */,
+				BB2F0085B5B1D752B4AAC01F /* ThesisModels.swift in Sources */,
 				83E13A1D6F1BB6E40B254DFB /* WidgetModels.swift in Sources */,
 				84E55C1BF8168325AD9AB085 /* WidgetViews.swift in Sources */,
 			);
@@ -258,6 +266,8 @@
 				92612598AB42BCCC9988F75D /* SetupView.swift in Sources */,
 				4969FC5A3D04E453BDE575A3 /* StockDetailView.swift in Sources */,
 				F341E6B24E92735512FC1A49 /* Styles.swift in Sources */,
+				4851D8C3B19CE02D13A245DC /* ThesisEditorView.swift in Sources */,
+				CBB0080EE2179E196C2B992D /* ThesisModels.swift in Sources */,
 				1974BBCF35F9540DE06CBBF7 /* WidgetModels.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -324,7 +334,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -337,7 +347,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -402,7 +412,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -421,7 +431,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 2.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;

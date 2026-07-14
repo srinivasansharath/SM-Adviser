@@ -28,10 +28,17 @@ struct WebReportView: View {
     let title: String
     let url: URL?
     let pdfName: String
+    var editableSymbol: String? = nil   // when set + server supports it, shows an Edit-thesis button
 
     @StateObject private var exporter = WebPDFExporter()
     @State private var shareItem: ShareItem?
     @State private var exporting = false
+    @State private var showThesis = false
+    @State private var thesisSaved = false
+
+    private var canEditThesis: Bool {
+        editableSymbol != nil && !SettingsStore.isDemo && SettingsStore.serverHas("thesis_editing")
+    }
 
     var body: some View {
         Group {
@@ -45,6 +52,11 @@ struct WebReportView: View {
         .navigationTitle(title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
+            if canEditThesis {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { showThesis = true } label: { Image(systemName: "square.and.pencil") }
+                }
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 Button {
                     exporting = true
@@ -59,17 +71,27 @@ struct WebReportView: View {
             }
         }
         .sheet(item: $shareItem) { item in ShareSheet(items: [item.url]) }
+        .sheet(isPresented: $showThesis) {
+            if let sym = editableSymbol {
+                ThesisEditorView(symbol: sym) { thesisSaved = true }
+            }
+        }
+        .alert("Thesis saved", isPresented: $thesisSaved) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("It'll be used in tomorrow's analysis.")
+        }
     }
 }
 
-/// The per-stock analysis one-pager (bundled sample page in demo mode).
+/// The per-stock analysis one-pager (bundled sample page in demo mode), with a thesis editor.
 struct StockDetailView: View {
     let symbol: String
     var body: some View {
         let url = SettingsStore.isDemo
             ? Bundle.main.url(forResource: "DemoStock", withExtension: "html")
             : SettingsStore.stockURL(symbol)
-        WebReportView(title: symbol, url: url, pdfName: "SM Adviser - \(symbol)")
+        WebReportView(title: symbol, url: url, pdfName: "SM Adviser - \(symbol)", editableSymbol: symbol)
     }
 }
 
