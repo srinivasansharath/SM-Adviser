@@ -16,8 +16,10 @@ from fastapi.responses import HTMLResponse, JSONResponse
 
 from ..config import get_settings, load_yaml_config
 from ..reports.widget_json import json_safe
+from .schemas import Meta
+from .version import API_VERSION, FEATURES, MIN_APP_BUILD, SERVER_VERSION
 
-app = FastAPI(title="SM-Adviser Widget API", docs_url=None, redoc_url=None)
+app = FastAPI(title="SM-Adviser API", version=SERVER_VERSION, docs_url=None, redoc_url=None)
 
 
 def get_output_dir() -> Path:
@@ -40,6 +42,18 @@ def require_auth(
 @app.get("/health")
 def health() -> dict:
     return {"status": "ok"}
+
+
+@app.get("/meta", response_model=Meta)
+def meta() -> Meta:
+    """Capability + version negotiation (open, like /health). The app reads this on connect to
+    gate features and detect version mismatch. See PROTOCOL.md."""
+    return Meta(
+        api_version=API_VERSION,
+        server_version=SERVER_VERSION,
+        features=FEATURES,
+        min_app_build=MIN_APP_BUILD,
+    )
 
 
 @app.get("/widget.json")

@@ -10,6 +10,8 @@ import json
 import math
 from pathlib import Path
 
+from ..api.version import API_VERSION
+
 _DISCLAIMER = "Personal informational use, not investment advice."
 
 
@@ -51,6 +53,7 @@ def build_widget(data: dict, as_of: str | None = None, narrative: dict | None = 
             }
         )
     return json_safe({
+        "api_version": API_VERSION,
         "as_of": as_of or data["run_date"],
         "headline": (narrative or {}).get("executive") or None,
         "portfolio": {

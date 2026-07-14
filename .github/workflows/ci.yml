@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -e ".[dev,api]"
+      - name: Test (incl. API contract test)
+        run: pytest -q
+      - name: openapi.json is up to date with the code
+        run: |
+          python -c "import json; from app.api.main import app; json.dump(app.openapi(), open('/tmp/openapi.json','w'), indent=2)"
+          diff -u docs/openapi.json /tmp/openapi.json || {
+            echo "::error::docs/openapi.json is stale — run: python -c \"import json;from app.api.main import app;json.dump(app.openapi(),open('docs/openapi.json','w'),indent=2)\"";
+            exit 1;
+          }

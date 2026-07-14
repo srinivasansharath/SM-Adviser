@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "portfolio-agent"
-version = "0.1.0"
+version = "2.0.0"
 description = "Private read-only daily portfolio intelligence agent for the Indian market (Zerodha/Kite)"
 readme = "README.md"
 requires-python = ">=3.12"
