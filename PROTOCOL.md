@@ -54,6 +54,8 @@ Open (no auth), like `/health`. The app calls it on connect to adapt gracefully.
 | GET | `/widget.json` | bearer | portfolio snapshot (see below) | `widget` |
 | GET | `/stock/{symbol}` | bearer | analysis one-pager (HTML) | `stock_analysis` |
 | GET | `/report/latest` | bearer | full daily report (HTML) | `full_report` |
+| GET | `/theses` | bearer | list of per-stock theses (JSON) | `thesis_editing` |
+| PUT | `/theses/{symbol}` | bearer | upsert one thesis; returns it (JSON) | `thesis_editing` |
 
 Auth is a bearer token: `Authorization: Bearer <WIDGET_API_TOKEN>` (per user/instance).
 
@@ -68,6 +70,14 @@ Full schema in `docs/openapi.json` (`WidgetPayload`). Key fields:
 - each holding: `symbol`, `name?`, `ltp?`, `change_pct?` (today), `ret_20d?` (1M), `ret_252d?` (1Y),
   `return_pct?` (since buy), `pnl?`, `classification?`, `confidence?`, `thesis_status?`, `flag?`.
 - All numeric fields may be `null`; the server never emits `NaN`/`Inf`.
+
+### Theses (app-editable, `thesis_editing` feature)
+The investment thesis per holding lives in the DB and is edited from the app. A thesis is
+`{symbol, thesis?, bought_reason?, conviction? (high|medium|low), target_weight_pct?, exit_if?: string[], updated_at?}`.
+- `GET /theses` → array of theses.
+- `PUT /theses/{symbol}` → body is the thesis (without `symbol`); creates or updates it. The next
+  morning run scores against the updated thesis.
+Servers seed the table once from `theses.yaml`, then it's DB-owned.
 
 ## For server implementers
 Anyone can implement a compatible server — the app is an open client (Home-Assistant style). Serve

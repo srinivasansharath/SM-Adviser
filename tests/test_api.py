@@ -2,10 +2,12 @@ import json
 
 from fastapi.testclient import TestClient
 
-from app.api.main import app, get_expected_token, get_output_dir
+from app.api.main import app, get_expected_token, get_output_dir, get_session_factory
 from app.api.schemas import Meta, WidgetPayload
 from app.api.version import API_VERSION
+from app.reasoning.theses import load_theses_from_db, seed_theses_from_yaml
 from app.reports.widget_json import build_widget
+from app.storage.db import bootstrap
 
 
 def test_health():
@@ -73,6 +75,40 @@ def test_widget_survives_nan_in_file(tmp_path):
             assert body["holdings"][0]["ret_20d"] is None
     finally:
         app.dependency_overrides.clear()
+
+
+def test_theses_put_then_get(tmp_path):
+    sf = bootstrap(f"sqlite:///{tmp_path / 'theses.db'}")  # SQLite create_all builds the table
+    app.dependency_overrides[get_session_factory] = lambda: sf
+    app.dependency_overrides[get_expected_token] = lambda: None
+    try:
+        with TestClient(app) as c:
+            assert c.get("/theses").json() == []
+            r = c.put("/theses/tcs", json={
+                "thesis": "quality IT", "conviction": "high",
+                "target_weight_pct": 8, "exit_if": ["revenue decline 2 quarters"]})
+            assert r.status_code == 200
+            body = r.json()
+            assert body["symbol"] == "TCS"  # sanitised + uppercased
+            assert body["exit_if"] == ["revenue decline 2 quarters"]
+            lst = c.get("/theses").json()
+            assert len(lst) == 1 and lst[0]["symbol"] == "TCS"
+            # update is idempotent (upsert, not duplicate)
+            c.put("/theses/TCS", json={"conviction": "medium"})
+            assert len(c.get("/theses").json()) == 1
+    finally:
+        app.dependency_overrides.clear()
+
+
+def test_theses_seed_and_load_from_db(tmp_path):
+    sf = bootstrap(f"sqlite:///{tmp_path / 'seed.db'}")
+    yaml_path = tmp_path / "theses.yaml"
+    yaml_path.write_text("INFY:\n  thesis: digital growth\n  conviction: medium\n  exit_if:\n    - margin below 20%\n")
+    assert seed_theses_from_yaml(sf, yaml_path) == 1
+    assert seed_theses_from_yaml(sf, yaml_path) == 0  # idempotent: table already seeded
+    theses = load_theses_from_db(sf)
+    assert theses["INFY"]["conviction"] == "medium"
+    assert theses["INFY"]["exit_if"] == ["margin below 20%"]
 
 
 def test_widget_404_when_not_generated(tmp_path):

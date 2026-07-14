@@ -7,6 +7,8 @@ present and well-typed while allowing the server to add new fields (forward-comp
 
 from __future__ import annotations
 
+from datetime import datetime
+
 from pydantic import BaseModel
 
 
@@ -48,3 +50,17 @@ class WidgetPayload(BaseModel):
     portfolio: PortfolioOut
     holdings: list[HoldingOut]
     disclaimer: str | None = None
+
+
+# --- Theses (app-editable) ---
+class ThesisUpsert(BaseModel):
+    thesis: str | None = None
+    bought_reason: str | None = None
+    conviction: str | None = None          # high | medium | low
+    target_weight_pct: float | None = None
+    exit_if: list[str] = []
+
+
+class ThesisOut(ThesisUpsert):
+    symbol: str
+    updated_at: datetime | None = None

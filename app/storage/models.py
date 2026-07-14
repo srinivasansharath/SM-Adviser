@@ -160,3 +160,19 @@ class LLMCall(Base):
     tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     cost: Mapped[float | None] = mapped_column(Float, nullable=True)
     output_ref: Mapped[str | None] = mapped_column(String(512), nullable=True)
+
+
+class Thesis(Base):
+    """Per-stock investment thesis — WHY the holding is owned + what breaks it. Editable from
+    the app (was a hand-edited theses.yaml). Feeds the thesis sub-score + LLM exit_if evaluation."""
+
+    __tablename__ = "theses"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    symbol: Mapped[str] = mapped_column(String(32), unique=True, index=True)
+    thesis: Mapped[str | None] = mapped_column(Text, nullable=True)
+    bought_reason: Mapped[str | None] = mapped_column(Text, nullable=True)
+    conviction: Mapped[str | None] = mapped_column(String(16), nullable=True)  # high|medium|low
+    target_weight_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
+    exit_if: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

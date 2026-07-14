@@ -15,8 +15,10 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from ..config import get_settings, load_yaml_config
+from ..reasoning.theses import upsert_thesis
 from ..reports.widget_json import json_safe
-from .schemas import Meta
+from ..storage.db import default_session_factory
+from .schemas import Meta, ThesisOut, ThesisUpsert
 from .version import API_VERSION, FEATURES, MIN_APP_BUILD, SERVER_VERSION
 
 app = FastAPI(title="SM-Adviser API", version=SERVER_VERSION, docs_url=None, redoc_url=None)
@@ -29,6 +31,10 @@ def get_output_dir() -> Path:
 
 def get_expected_token() -> str | None:
     return get_settings().widget_api_token
+
+
+def get_session_factory():
+    return default_session_factory()
 
 
 def require_auth(
@@ -71,6 +77,27 @@ def latest_report(_: None = Depends(require_auth), output_dir: Path = Depends(ge
     if not reports:
         raise HTTPException(status_code=404, detail="no report generated yet")
     return reports[-1].read_text(encoding="utf-8")
+
+
+@app.get("/theses", response_model=list[ThesisOut])
+def list_theses(_: None = Depends(require_auth), sf=Depends(get_session_factory)):
+    """All per-stock theses (the app's editor reads these)."""
+    from ..storage.models import Thesis
+
+    with sf() as s:
+        rows = s.query(Thesis).order_by(Thesis.symbol).all()
+        return [ThesisOut.model_validate(r, from_attributes=True) for r in rows]
+
+
+@app.put("/theses/{symbol}", response_model=ThesisOut)
+def put_thesis(symbol: str, body: ThesisUpsert, _: None = Depends(require_auth),
+               sf=Depends(get_session_factory)):
+    """Create/update one holding's thesis from the app. Next morning run uses it."""
+    safe = re.sub(r"[^A-Za-z0-9&_-]", "", symbol).upper()
+    if not safe:
+        raise HTTPException(status_code=400, detail="invalid symbol")
+    row = upsert_thesis(sf, safe, body.model_dump())
+    return ThesisOut.model_validate(row, from_attributes=True)
 
 
 @app.get("/stock/{symbol}", response_class=HTMLResponse)

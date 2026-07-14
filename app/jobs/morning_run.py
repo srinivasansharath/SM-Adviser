@@ -275,13 +275,18 @@ def main() -> None:
     from ..connectors.market_data import get_market_data
     from ..connectors.order_flow import get_order_flow
     from ..reasoning.llm import get_llm
-    from ..reasoning.theses import load_theses
+    from ..reasoning.theses import load_theses_from_db, seed_theses_from_yaml
+    from ..storage.db import default_session_factory
+
+    sf = default_session_factory()
+    seed_theses_from_yaml(sf)  # one-time: migrate theses.yaml into the DB when the table is empty
 
     summary = run(
+        session_factory=sf,
         market_data=get_market_data(),
         order_flow=get_order_flow(),
         fundamentals=get_fundamentals(),
-        theses=load_theses(),  # empty {} if theses.yaml absent -> scoring produces neutral results
+        theses=load_theses_from_db(sf),  # theses now live in the DB (app-editable)
         llm=get_llm(get_settings()),  # None if no ANTHROPIC_API_KEY -> narrative skipped
         render=True,
     )
