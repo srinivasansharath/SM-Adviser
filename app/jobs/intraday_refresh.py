@@ -19,6 +19,7 @@ from zoneinfo import ZoneInfo
 
 from ..config import get_settings, load_yaml_config
 from ..connectors import get_connector
+from ..reports.widget_json import json_safe
 
 IST = ZoneInfo("Asia/Kolkata")
 _MARKET_OPEN = dt.time(9, 15)
@@ -92,7 +93,8 @@ def run(now: dt.datetime | None = None, force: bool = False) -> dict:
     doc["prices_as_of"] = now.isoformat(timespec="seconds")
 
     tmp = wpath.with_name(wpath.name + ".tmp")
-    tmp.write_text(json.dumps(doc, indent=2), encoding="utf-8")
+    # json_safe: prices from Kite can be NaN; strip them so the served payload stays strict-JSON.
+    tmp.write_text(json.dumps(json_safe(doc), indent=2, allow_nan=False), encoding="utf-8")
     os.replace(tmp, wpath)  # atomic swap so the API never reads a half-written file
 
     return {"updated_holdings": updated, "value": p["value"], "prices_as_of": doc["prices_as_of"]}

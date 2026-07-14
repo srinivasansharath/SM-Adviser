@@ -7,9 +7,22 @@ per holding. For now each holding carries price, day change, and the preliminary
 from __future__ import annotations
 
 import json
+import math
 from pathlib import Path
 
 _DISCLAIMER = "Personal informational use, not investment advice."
+
+
+def json_safe(obj):
+    """Replace NaN/Inf floats with None so the payload is strict-JSON valid (Starlette's
+    JSONResponse serializes with allow_nan=False and would 500 on a bare NaN)."""
+    if isinstance(obj, float):
+        return obj if math.isfinite(obj) else None
+    if isinstance(obj, dict):
+        return {k: json_safe(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [json_safe(v) for v in obj]
+    return obj
 
 
 def build_widget(data: dict, as_of: str | None = None, narrative: dict | None = None) -> dict:
@@ -37,7 +50,7 @@ def build_widget(data: dict, as_of: str | None = None, narrative: dict | None = 
                 "flag_reason": (r.get("rec_reason") or (r["reasons"][0] if r["reasons"] else None)),
             }
         )
-    return {
+    return json_safe({
         "as_of": as_of or data["run_date"],
         "headline": (narrative or {}).get("executive") or None,
         "portfolio": {
@@ -49,12 +62,16 @@ def build_widget(data: dict, as_of: str | None = None, narrative: dict | None = 
         },
         "holdings": holdings,
         "disclaimer": _DISCLAIMER,
-    }
+    })
 
 
 def write_widget(data: dict, output_dir: Path, as_of: str | None = None, narrative: dict | None = None) -> Path:
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     path = output_dir / "widget.json"  # stable name; the widget always reads the latest
-    path.write_text(json.dumps(build_widget(data, as_of, narrative), indent=2), encoding="utf-8")
+    # allow_nan=False: build_widget already sanitizes, so any NaN here is a real bug — fail loud.
+    path.write_text(
+        json.dumps(build_widget(data, as_of, narrative), indent=2, allow_nan=False),
+        encoding="utf-8",
+    )
     return path

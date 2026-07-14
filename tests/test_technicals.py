@@ -49,6 +49,12 @@ def test_relative_strength_vs_index():
     assert rs is not None
 
 
+def test_nan_close_returns_none():
+    # yfinance can hand back NaN closes; metrics must be None, not NaN (breaks strict JSON).
+    assert t.pct_return([{"close": 100.0}, {"close": float("nan")}], 1) is None
+    assert t.sma([{"close": float("nan")}] * 5, 5) is None
+
+
 def test_insufficient_history_returns_none():
     c = candles([100, 101, 102])
     assert t.pct_return(c, 20) is None

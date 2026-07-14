@@ -6,7 +6,15 @@ history, so callers store nulls rather than crashing. RSI uses simple-moving-ave
 
 from __future__ import annotations
 
+import math
+
 import pandas as pd
+
+
+def _finite(x: float | None) -> float | None:
+    """None for NaN/Inf (e.g. yfinance NaN closes) so callers store null, not a value that
+    later breaks strict JSON serialization."""
+    return x if x is not None and math.isfinite(x) else None
 
 
 def _closes(candles: list[dict]) -> pd.Series:
@@ -21,14 +29,14 @@ def pct_return(candles: list[dict], n: int) -> float | None:
     s = _closes(candles)
     if len(s) <= n or s.iloc[-1 - n] == 0:
         return None
-    return round((s.iloc[-1] / s.iloc[-1 - n] - 1) * 100, 2)
+    return _finite(round((s.iloc[-1] / s.iloc[-1 - n] - 1) * 100, 2))
 
 
 def sma(candles: list[dict], n: int) -> float | None:
     s = _closes(candles)
     if len(s) < n:
         return None
-    return round(s.tail(n).mean(), 2)
+    return _finite(round(s.tail(n).mean(), 2))
 
 
 def rsi(candles: list[dict], period: int = 14) -> float | None:
@@ -43,7 +51,7 @@ def rsi(candles: list[dict], period: int = 14) -> float | None:
     if avg_loss == 0:
         return 100.0 if avg_gain > 0 else 50.0
     rs = avg_gain / avg_loss
-    return round(100 - 100 / (1 + rs), 2)
+    return _finite(round(100 - 100 / (1 + rs), 2))
 
 
 def max_drawdown(candles: list[dict]) -> float | None:
@@ -51,7 +59,7 @@ def max_drawdown(candles: list[dict]) -> float | None:
     if s.empty:
         return None
     dd = (s / s.cummax() - 1) * 100
-    return round(dd.min(), 2)
+    return _finite(round(dd.min(), 2))
 
 
 def volume_spike(candles: list[dict], n: int = 20) -> float | None:
@@ -62,7 +70,7 @@ def volume_spike(candles: list[dict], n: int = 20) -> float | None:
     prior_avg = v.iloc[-(n + 1) : -1].mean()
     if prior_avg == 0:
         return None
-    return round(v.iloc[-1] / prior_avg, 2)
+    return _finite(round(v.iloc[-1] / prior_avg, 2))
 
 
 def relative_strength(candles: list[dict], index_candles: list[dict] | None, n: int = 20) -> float | None:

@@ -15,6 +15,7 @@ from fastapi import Depends, FastAPI, Header, HTTPException
 from fastapi.responses import HTMLResponse, JSONResponse
 
 from ..config import get_settings, load_yaml_config
+from ..reports.widget_json import json_safe
 
 app = FastAPI(title="SM-Adviser Widget API", docs_url=None, redoc_url=None)
 
@@ -46,7 +47,8 @@ def widget(_: None = Depends(require_auth), output_dir: Path = Depends(get_outpu
     path = output_dir / "widget.json"
     if not path.exists():
         raise HTTPException(status_code=404, detail="widget.json not generated yet")
-    return JSONResponse(json.loads(path.read_text(encoding="utf-8")))
+    # json_safe strips any NaN/Inf so JSONResponse (strict, allow_nan=False) never 500s.
+    return JSONResponse(json_safe(json.loads(path.read_text(encoding="utf-8"))))
 
 
 @app.get("/report/latest", response_class=HTMLResponse)
