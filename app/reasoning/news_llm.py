@@ -69,7 +69,12 @@ def assess_news(llm: LLMClient | None, news_data: dict | None, max_tokens: int =
         f"{json.dumps(payload, indent=2, default=str)}\n\n"
         f"Return STRICT JSON exactly matching this schema:\n{_SCHEMA}"
     )
-    resp = llm.complete(_SYSTEM, prompt, max_tokens=max_tokens)
+    try:
+        resp = llm.complete(_SYSTEM, prompt, max_tokens=max_tokens)
+    except Exception:
+        # A transient LLM/network failure must not sink the daily run — fall back to the
+        # deterministic score_news_risk (scoring uses it when there's no override).
+        return {"scores": {}, "usage": None, "prompt": prompt}
     parsed = _parse_json(resp.text)
 
     scores = {}

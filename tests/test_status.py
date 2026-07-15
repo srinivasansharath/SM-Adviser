@@ -18,6 +18,15 @@ class _DeadNews(NewsConnector):
         return []
 
 
+class _FailingLLM(MockLLM):
+    """An LLM whose every call raises — simulates an Anthropic API/network timeout."""
+
+    name = "failing"
+
+    def complete(self, system, prompt, max_tokens=1500):
+        raise TimeoutError("handshake timed out")
+
+
 def test_estimate_cost_from_tokens():
     # 1M input + 1M output on Sonnet = 3 + 15 USD.
     assert estimate_cost("claude-sonnet-5", 1_000_000, 1_000_000) == 18.0
@@ -74,6 +83,29 @@ def test_build_status_flags_over_budget(session_factory):
         s.commit()
     status = build_status(session_factory, today=rd, budget_usd=10.0)
     assert status["budget"]["over_budget"] is True
+
+
+def test_llm_timeout_does_not_sink_the_run(session_factory):
+    # A timing-out LLM must degrade gracefully: the run still completes, scores/health persist,
+    # and news_risk falls back to the deterministic score (no crash).
+    from app.reasoning.news_llm import assess_news
+    from app.storage.models import Recommendation, Snapshot
+
+    assert assess_news(_FailingLLM(), {"TCS": [{"material": True, "subcategory": "Dividend"}]})["scores"] == {}
+
+    rd = date(2026, 7, 15)
+    summary = morning_run.run(
+        connector=MockConnector(), session_factory=session_factory, run_date=rd,
+        config={"analytics": {"lookback_trading_days": 24}},
+        market_data=MockMarketData(), news=MockNews(),
+        theses={"TCS": {"conviction": "high"}},
+        llm=_FailingLLM(),
+    )
+    assert summary["narrative"] is False
+    assert "narrative_error" in summary
+    with session_factory() as s:
+        assert s.query(Recommendation).filter_by(run_date=rd).count() == 5   # scoring still ran
+        assert s.query(Snapshot).filter_by(run_date=rd, kind="run_health").count() == 1
 
 
 def test_llm_call_stores_estimated_cost(session_factory):

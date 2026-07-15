@@ -386,11 +386,18 @@ def run(
 
     narrative = None
     if llm is not None and theses is not None and data is not None:
-        narrative = generate_narrative(llm, data, theses, fundamentals_data, news_data)
-        _store_llm_call(session_factory, run_date, build_user_prompt(data, theses, fundamentals_data, news_data), narrative["usage"])
-        summary["narrative"] = True
-        summary["narrative_violations"] = len(narrative["violations"])
-        summary["llm_tokens"] = narrative["usage"].input_tokens + narrative["usage"].output_tokens
+        try:
+            narrative = generate_narrative(llm, data, theses, fundamentals_data, news_data)
+            _store_llm_call(session_factory, run_date, build_user_prompt(data, theses, fundamentals_data, news_data), narrative["usage"])
+            summary["narrative"] = True
+            summary["narrative_violations"] = len(narrative["violations"])
+            summary["llm_tokens"] = narrative["usage"].input_tokens + narrative["usage"].output_tokens
+        except Exception as e:
+            # A transient LLM/network failure must not sink the run — render without the
+            # narrative (deterministic scores/report are already complete and persisted).
+            narrative = None
+            summary["narrative"] = False
+            summary["narrative_error"] = f"{type(e).__name__}: {e}"[:200]
 
     if render and data is not None:
         summary.update(_render_outputs(session_factory, run_date, config, data, narrative))
