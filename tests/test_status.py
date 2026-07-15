@@ -61,6 +61,31 @@ def test_dead_news_connector_flags_degraded(session_factory):
     assert "blocked" in status["connectors"]["news"]["detail"]
 
 
+class _UnreachablePortfolio(MockConnector):
+    """Portfolio connector whose holdings fetch fails — e.g. no internet / Kite down."""
+
+    name = "zerodha"
+
+    def get_holdings(self):
+        raise ConnectionError("api.kite.trade unreachable")
+
+
+def test_aborted_run_records_degraded_portfolio_health(session_factory):
+    import pytest
+
+    rd = date(2026, 7, 15)
+    # The run still aborts (no holdings = nothing to analyse)...
+    with pytest.raises(ConnectionError):
+        morning_run.run(connector=_UnreachablePortfolio(), session_factory=session_factory,
+                        run_date=rd, config={})
+    # ...but /status now reflects the failure instead of serving stale data.
+    status = build_status(session_factory, today=rd)
+    assert status["status"] == "degraded"
+    assert status["run_aborted"] is True
+    assert "portfolio" in status["degraded"]
+    assert "unreachable" in status["connectors"]["portfolio"]["detail"]
+
+
 def test_build_status_aggregates_token_cost(session_factory):
     rd = date(2026, 7, 15)
     with session_factory() as s:

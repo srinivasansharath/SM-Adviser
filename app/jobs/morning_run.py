@@ -193,6 +193,32 @@ def _connector_health(
     return health
 
 
+def _record_aborted_health(session_factory, run_date: date, source: str, error: Exception) -> None:
+    """Persist a run_health snapshot when the run can't even fetch holdings (portfolio connector
+    unreachable — e.g. no internet / Kite down). Lets /status show today's run as degraded instead
+    of silently serving stale data from the last good run."""
+    payload = {
+        "portfolio": {
+            "source": source,
+            "status": "degraded",
+            "detail": f"unreachable — could not fetch holdings, run aborted ({type(error).__name__})",
+        },
+        "run_aborted": True,
+    }
+    try:
+        with session_factory() as session:
+            session.query(Snapshot).filter(
+                Snapshot.run_date == run_date, Snapshot.kind == "run_health"
+            ).delete()
+            session.add(
+                Snapshot(run_date=run_date, kind="run_health", source=source,
+                         payload=payload, fetched_at=datetime.now(timezone.utc))
+            )
+            session.commit()
+    except Exception:
+        pass  # best-effort; never mask the original failure with a bookkeeping error
+
+
 def _render_outputs(session_factory: sessionmaker, run_date: date, config: dict, data: dict,
                     narrative: dict | None) -> dict:
     """Build the markdown/HTML report + widget.json from gathered data; record Report rows."""
@@ -232,7 +258,13 @@ def run(
     session_factory = session_factory or default_session_factory()
     run_date = run_date or date.today()
 
-    holdings = connector.get_holdings()
+    try:
+        holdings = connector.get_holdings()
+    except Exception as e:
+        # No holdings = nothing to analyse, so we still abort — but first record the failure so
+        # /status (and the watchdog) reflect a degraded portfolio connector, not stale data.
+        _record_aborted_health(session_factory, run_date, connector.name, e)
+        raise
     total_value = sum(_holding_value(h) for h in holdings)
 
     with session_factory() as session:

@@ -47,13 +47,17 @@ def build_status(session_factory, today: date | None = None, budget_usd: float |
     over-budget month so callers can prompt the operator to recharge."""
     today = today or date.today()
     with session_factory() as session:
-        last_run, connectors = _latest_run_health(session)
+        last_run, payload = _latest_run_health(session)
         usage = _usage(session, today)
 
-    degraded = [k for k, v in connectors.items() if isinstance(v, dict) and v.get("status") == "degraded"]
+    # A run that aborted before fetching holdings tags the payload; keep that flag out of connectors.
+    run_aborted = bool(payload.get("run_aborted"))
+    connectors = {k: v for k, v in payload.items() if isinstance(v, dict)}
+    degraded = [k for k, v in connectors.items() if v.get("status") == "degraded"]
     out = {
-        "status": "degraded" if degraded else "ok",
+        "status": "degraded" if (degraded or run_aborted) else "ok",
         "last_run": last_run,
+        "run_aborted": run_aborted,
         "connectors": connectors,
         "degraded": degraded,
         "usage": usage,
