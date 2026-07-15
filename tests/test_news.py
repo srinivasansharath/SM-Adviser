@@ -35,6 +35,16 @@ def test_news_risk_score():
     assert score_news_risk(pos) > 65          # positive lifts it
 
 
+def test_news_recency_weighting():
+    import datetime as dt
+    today = dt.date(2026, 7, 15)
+    recent = [{"material": True, "subcategory": "Resignation", "headline": "resign", "date": "2026-07-14"}]
+    old = [{"material": True, "subcategory": "Resignation", "headline": "resign", "date": "2026-06-16"}]
+    assert score_news_risk(recent, today) < score_news_risk(old, today)   # recent negative bites more
+    assert has_negative_news(recent, today=today)          # recent -> attention
+    assert not has_negative_news(old, today=today)         # 29d old -> stale, no attention
+
+
 def test_has_negative_news():
     assert has_negative_news([{"material": True, "subcategory": "Resignation", "headline": "resign"}])
     assert has_negative_news([{"material": True, "subcategory": "Fund Raising", "headline": "fund raising"}])

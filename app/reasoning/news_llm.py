@@ -21,9 +21,10 @@ _SYSTEM = (
     "action, auditor resignation, major litigation, heavy dilution, mass management exits). Weigh "
     "DIRECTION and MATERIALITY holistically — a rating upgrade or a value-accretive order win is "
     "positive; a downgrade, dilutive fundraise, governance red flag or an exchange 'clarification "
-    "sought' is negative; routine intimations sit near 60. Base it ONLY on the filings provided; "
-    "never invent facts. This is a decision-support risk score, not investment advice. Output "
-    "STRICT JSON only, no prose outside it."
+    "sought' is negative; routine intimations sit near 60. WEIGHT RECENCY: a filing from the last "
+    "few days matters far more than one from weeks ago, which is likely already reflected in the "
+    "price. Base it ONLY on the filings provided (each has a date); never invent facts. This is a "
+    "decision-support risk score, not investment advice. Output STRICT JSON only, no prose outside it."
 )
 _SCHEMA = '{"<SYMBOL>": {"news_risk": <integer 0-100>, "note": "<=1 sentence explaining the score"}}'
 
