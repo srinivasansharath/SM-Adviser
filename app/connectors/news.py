@@ -12,9 +12,11 @@ client-side. Degrades gracefully (returns []) on any network/parse failure, like
 from __future__ import annotations
 
 import datetime as dt
+import re
 from abc import ABC, abstractmethod
 
 _BSE_URL = "https://api.bseindia.com/BseIndiaAPI/api/AnnSubCategoryGetData/w"
+_BSE_SEARCH = "https://api.bseindia.com/BseIndiaAPI/api/PeerSmartSearch/w"
 _BSE_HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125 Safari/537.36",
     "Referer": "https://www.bseindia.com/corporates/ann.html",
@@ -22,13 +24,42 @@ _BSE_HEADERS = {
 }
 _ATTACH = "https://www.bseindia.com/xml-data/corpfiling/AttachLive/"
 
-# NSE tradingsymbol -> BSE scrip code (starter set incl. the current portfolio).
+# NSE tradingsymbol -> BSE scrip code (fast path). Anything not here is resolved by ISIN.
 BSE_SCRIP = {
     "TCS": 532540, "INFY": 500209, "SBIN": 500112, "YESBANK": 532648,
     "TATACHEM": 500770, "TATAPOWER": 500400, "SEPC": 532945, "RELIANCE": 500325,
     "HDFCBANK": 500180, "ICICIBANK": 532174, "ITC": 500875, "LT": 500510,
     "MARUTI": 532500, "HINDUNILVR": 500696, "WIPRO": 507685, "AXISBANK": 532215,
 }
+
+_ISIN_CACHE: dict[str, int | None] = {}
+
+
+def resolve_scrip_by_isin(isin: str | None) -> int | None:
+    """ISIN -> BSE scrip code via BSE's smart-search (the site's search box). Cached."""
+    if not isin:
+        return None
+    isin = isin.strip().upper()
+    if isin in _ISIN_CACHE:
+        return _ISIN_CACHE[isin]
+    code = None
+    try:
+        import httpx
+
+        r = httpx.get(_BSE_SEARCH, params={"Type": "SS", "text": isin},
+                      headers=_BSE_HEADERS, timeout=15)
+        text = r.text or ""
+        # The response is HTML <li> items; match the segment carrying this exact ISIN.
+        for seg in text.split("<li"):
+            if isin in seg.upper():
+                m = re.search(r"liclick\('(\d+)'", seg)
+                if m:
+                    code = int(m.group(1))
+                    break
+    except Exception:
+        code = None
+    _ISIN_CACHE[isin] = code
+    return code
 
 # High-signal event keywords (matched against category + subcategory). "Regulation 30" is NOT
 # here — it's in nearly every filing, so it's useless as a materiality signal.
@@ -56,7 +87,8 @@ class NewsConnector(ABC):
     name = "base"
 
     @abstractmethod
-    def get_announcements(self, symbol: str, days: int = 30, exchange: str = "NSE") -> list[dict]:
+    def get_announcements(self, symbol: str, days: int = 30, exchange: str = "NSE",
+                          isin: str | None = None) -> list[dict]:
         """Return recent announcements as
         [{date, headline, category, subcategory, material, url, source}] (newest first)."""
 
@@ -64,7 +96,8 @@ class NewsConnector(ABC):
 class MockNews(NewsConnector):
     name = "mock"
 
-    def get_announcements(self, symbol: str, days: int = 30, exchange: str = "NSE") -> list[dict]:
+    def get_announcements(self, symbol: str, days: int = 30, exchange: str = "NSE",
+                          isin: str | None = None) -> list[dict]:
         return [{
             "date": "2026-07-12", "headline": f"{symbol} Q1 results: revenue up 8% YoY",
             "category": "Result", "subcategory": "Financial Results", "material": True,
@@ -75,10 +108,11 @@ class MockNews(NewsConnector):
 class BSEAnnouncements(NewsConnector):
     name = "bse"
 
-    def get_announcements(self, symbol: str, days: int = 30, exchange: str = "NSE") -> list[dict]:  # pragma: no cover - network
+    def get_announcements(self, symbol: str, days: int = 30, exchange: str = "NSE",
+                          isin: str | None = None) -> list[dict]:  # pragma: no cover - network
         import httpx
 
-        code = BSE_SCRIP.get(symbol.upper())
+        code = BSE_SCRIP.get(symbol.upper()) or resolve_scrip_by_isin(isin)
         if not code:
             return []
         params = {

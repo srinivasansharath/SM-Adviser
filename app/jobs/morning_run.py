@@ -245,7 +245,9 @@ def run(
         for h in holdings:
             sym = h["tradingsymbol"]
             try:
-                news_data[sym] = news.get_announcements(sym, exchange=h.get("exchange", "NSE"))
+                news_data[sym] = news.get_announcements(
+                    sym, exchange=h.get("exchange", "NSE"), isin=h.get("isin")
+                )
             except Exception:
                 news_data[sym] = []
         with session_factory() as session:  # freeze for audit
