@@ -31,6 +31,9 @@ class Settings(BaseSettings):
     # LLM (Phase 4+) / Widget API (Phase 3+)
     anthropic_api_key: str | None = None
     widget_api_token: str | None = None
+    # Soft monthly LLM-spend budget (USD). When set, /status flags over-budget so the ops
+    # watchdog can nudge you to recharge your Anthropic account. None -> no budget tracking.
+    monthly_budget_usd: float | None = None
 
     def resolved_database_url(self) -> str:
         """Return DATABASE_URL if set, else a local SQLite file under data/."""

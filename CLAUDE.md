@@ -24,7 +24,8 @@ app/
                           #   recommender.py, llm.py (Anthropic|mock), narrative.py, prompts.py
   reports/                # gather.py (join a run's data), daily_report.py, widget_json.py,
                           #   stock_page.py (per-stock analysis one-pager)
-  api/main.py             # FastAPI: /widget.json, /report/latest, /stock/{symbol}, /health (bearer auth)
+  api/main.py             # FastAPI: /widget.json, /report/latest, /stock/{symbol}, /theses,
+                          #   /status (connector health + LLM token/cost), /meta, /health (bearer auth)
   storage/                # SQLAlchemy models + engine/session (db.py)
   safety/guardrails.py    # ReadOnlyKite wrapper (blocks orders), bounded-language enforcement
 ios/PortfolioWidget/      # SwiftUI app + WidgetKit extension (XcodeGen project.yml)

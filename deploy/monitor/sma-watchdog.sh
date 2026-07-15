@@ -65,6 +65,60 @@ else
   transition disk_space ok ""
 fi
 
+# 6. Connector health + LLM budget (from the authed /status endpoint).
+#    Detects a connector that stopped returning data (e.g. BSE blacklisting the NUC's IP) and a
+#    month's LLM spend crossing MONTHLY_BUDGET_USD (time to recharge the Anthropic account).
+TOKEN=""
+[ -f "$SMA_ENV" ] && TOKEN="$(grep -E '^WIDGET_API_TOKEN=' "$SMA_ENV" | tail -1 | cut -d= -f2- | tr -d '"'\'' \t\r')"
+status_json=""
+if [ -n "$TOKEN" ]; then
+  status_json="$(curl -fsS -m 8 -H "Authorization: Bearer $TOKEN" "$STATUS_URL" 2>/dev/null)"
+fi
+
+if [ -z "$status_json" ]; then
+  # Couldn't read /status (API down is already covered by check 1; only alert if API itself is up).
+  :
+else
+  # Parse with python3 (present on the NUC); prints two lines: degraded detail, and budget detail.
+  # JSON goes in via env (the heredoc already owns stdin, so we can't pipe it in).
+  parsed="$(STATUS_JSON="$status_json" python3 - <<'PY'
+import json, os
+try:
+    d = json.loads(os.environ.get("STATUS_JSON", ""))
+except Exception:
+    print("PARSE_FAIL"); print(""); raise SystemExit(0)
+conns = d.get("connectors") or {}
+deg = []
+for name, v in conns.items():
+    if isinstance(v, dict) and v.get("status") == "degraded":
+        deg.append("%s (%s)" % (name, v.get("detail", "")))
+print("; ".join(deg))
+b = d.get("budget") or {}
+if b.get("over_budget"):
+    print("LLM spend this month ~$%.2f exceeded the $%.2f budget — recharge your Anthropic account"
+          % (b.get("spent_usd", 0.0), b.get("monthly_usd", 0.0)))
+else:
+    print("")
+PY
+)"
+  deg_detail="$(printf '%s' "$parsed" | sed -n '1p')"
+  budget_detail="$(printf '%s' "$parsed" | sed -n '2p')"
+
+  if [ "$deg_detail" = "PARSE_FAIL" ]; then
+    :  # malformed response; don't spam
+  elif [ -n "$deg_detail" ]; then
+    transition connector_health fail "Connector(s) degraded: $deg_detail"
+  else
+    transition connector_health ok ""
+  fi
+
+  if [ -n "$budget_detail" ]; then
+    transition llm_budget fail "$budget_detail"
+  else
+    transition llm_budget ok ""
+  fi
+fi
+
 # --- One batched email per direction ---
 if [ "${#breaks[@]}" -gt 0 ]; then
   {

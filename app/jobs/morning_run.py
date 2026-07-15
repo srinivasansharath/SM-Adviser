@@ -118,6 +118,8 @@ def _store_order_flow(
 def _store_llm_call(session_factory, run_date: date, prompt: str, usage) -> None:
     import hashlib
 
+    from ..reasoning.llm import estimate_cost
+
     with session_factory() as session:
         session.add(
             LLMCall(
@@ -125,11 +127,70 @@ def _store_llm_call(session_factory, run_date: date, prompt: str, usage) -> None
                 model=usage.model,
                 prompt_hash=hashlib.sha256(prompt.encode()).hexdigest()[:32],
                 tokens=(usage.input_tokens + usage.output_tokens),
-                cost=None,  # derivable from tokens; exact rate left to the caller
+                cost=estimate_cost(usage.model, usage.input_tokens, usage.output_tokens),
                 output_ref=None,
             )
         )
         session.commit()
+
+
+def _connector_health(
+    connector,
+    holdings: list[dict],
+    market_data,
+    metrics_count: int,
+    order_flow,
+    order_flow_count: int,
+    fundamentals,
+    fundamentals_data: dict | None,
+    news,
+    news_data: dict | None,
+) -> dict:
+    """Per-connector OK/degraded status for the day, derived from whether each connector actually
+    returned data. A connector that stops responding (e.g. BSE blacklists the NUC's IP) shows up as
+    'degraded' here, which the /status endpoint and the watchdog surface for the operator."""
+    n = len(holdings)
+
+    def with_data(d: dict | None) -> int:
+        return sum(1 for v in (d or {}).values() if v)
+
+    health: dict[str, dict] = {
+        "portfolio": {
+            "status": "ok" if holdings else "degraded",
+            "detail": f"{n} holdings",
+        }
+    }
+    if market_data is not None:
+        health["market_data"] = {
+            "source": getattr(market_data, "name", "?"),
+            "status": "ok" if metrics_count else "degraded",
+            "detail": f"{metrics_count}/{n} holdings with metrics",
+        }
+    if fundamentals is not None:
+        got = with_data(fundamentals_data)
+        health["fundamentals"] = {
+            "source": getattr(fundamentals, "name", "?"),
+            "status": "ok" if got else "degraded",
+            "detail": f"{got}/{n} holdings with ratios",
+        }
+    if news is not None:
+        got = with_data(news_data)
+        health["news"] = {
+            "source": getattr(news, "name", "?"),
+            # Zero filings across the WHOLE portfolio usually means the feed is blocked (BSE IP
+            # blacklist) rather than a genuinely quiet day — worth a look.
+            "status": "ok" if got else "degraded",
+            "detail": f"{got}/{n} holdings with filings"
+            + ("" if got else " (feed may be blocked — check BSE reachability)"),
+        }
+    if order_flow is not None:
+        # NSE returns 0 from datacenter IPs by design — informational, never an alarm.
+        health["order_flow"] = {
+            "source": getattr(order_flow, "name", "?"),
+            "status": "info",
+            "detail": f"{order_flow_count} flow rows (0 is expected — NSE blocks datacenter IPs)",
+        }
+    return health
 
 
 def _render_outputs(session_factory: sessionmaker, run_date: date, config: dict, data: dict,
@@ -292,6 +353,20 @@ def run(
             session_factory, run_date, theses, config, fundamentals_data, news_data, news_scores
         )
 
+    health = _connector_health(
+        connector, holdings, market_data, metrics_count, order_flow, order_flow_count,
+        fundamentals, fundamentals_data, news, news_data,
+    )
+    with session_factory() as session:
+        session.query(Snapshot).filter(
+            Snapshot.run_date == run_date, Snapshot.kind == "run_health"
+        ).delete()
+        session.add(
+            Snapshot(run_date=run_date, kind="run_health", source=connector.name,
+                     payload=health, fetched_at=datetime.now(timezone.utc))
+        )
+        session.commit()
+
     summary = {
         "run_date": str(run_date),
         "connector": connector.name,
@@ -302,6 +377,7 @@ def run(
         "market_data": market_data.name if market_data else None,
         "order_flow": order_flow_count,
         "recommendations": recommendations,
+        "degraded": [k for k, v in health.items() if v.get("status") == "degraded"],
     }
     data = None
     if render or llm is not None:

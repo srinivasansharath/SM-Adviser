@@ -50,6 +50,16 @@ def health() -> dict:
     return {"status": "ok"}
 
 
+@app.get("/status")
+def status(_: None = Depends(require_auth), sf=Depends(get_session_factory)):
+    """Operational health (authed): per-connector status from the latest run + cumulative LLM
+    token/cost spend, with an optional monthly-budget flag. Lets the operator (and the watchdog)
+    spot a stalled connector — e.g. BSE blacklisting the NUC's IP — and know when to recharge."""
+    from ..reports.status import build_status
+
+    return build_status(sf, budget_usd=get_settings().monthly_budget_usd)
+
+
 @app.get("/meta", response_model=Meta)
 def meta() -> Meta:
     """Capability + version negotiation (open, like /health). The app reads this on connect to

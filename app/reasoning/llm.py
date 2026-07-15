@@ -8,6 +8,18 @@ from dataclasses import dataclass
 # Daily narrative uses Sonnet (cheap, strong); weekly deep-dives can pass Opus.
 DEFAULT_MODEL = "claude-sonnet-5"
 
+# Estimated USD per MILLION tokens (input, output). Adjust to your Anthropic plan's rates.
+MODEL_PRICING = {
+    "claude-sonnet-5": (3.0, 15.0),
+    "claude-opus-4-8": (15.0, 75.0),
+    "mock": (0.0, 0.0),
+}
+
+
+def estimate_cost(model: str, input_tokens: int, output_tokens: int) -> float:
+    inp, out = MODEL_PRICING.get(model, (3.0, 15.0))
+    return round(input_tokens / 1e6 * inp + output_tokens / 1e6 * out, 4)
+
 
 @dataclass
 class LLMResponse:

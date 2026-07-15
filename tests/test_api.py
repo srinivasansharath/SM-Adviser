@@ -77,6 +77,33 @@ def test_widget_survives_nan_in_file(tmp_path):
         app.dependency_overrides.clear()
 
 
+def test_status_endpoint_requires_auth_and_reports_health(tmp_path):
+    from datetime import date
+
+    from app.storage.models import LLMCall, Snapshot
+
+    sf = bootstrap(f"sqlite:///{tmp_path / 'status.db'}")
+    with sf() as s:
+        s.add(Snapshot(run_date=date(2026, 7, 15), kind="run_health", source="mock",
+                       payload={"news": {"status": "degraded", "detail": "feed blocked"}},
+                       fetched_at=__import__("datetime").datetime(2026, 7, 15)))
+        s.add(LLMCall(run_date=date(2026, 7, 15), model="claude-sonnet-5", tokens=1000, cost=0.5))
+        s.commit()
+    app.dependency_overrides[get_session_factory] = lambda: sf
+    app.dependency_overrides[get_expected_token] = lambda: "secret"
+    try:
+        with TestClient(app) as c:
+            assert c.get("/status").status_code == 401  # authed
+            r = c.get("/status", headers={"Authorization": "Bearer secret"})
+            assert r.status_code == 200
+            body = r.json()
+            assert body["status"] == "degraded"
+            assert "news" in body["degraded"]
+            assert body["usage"]["all_time"]["cost_usd"] == 0.5
+    finally:
+        app.dependency_overrides.clear()
+
+
 def test_theses_put_then_get(tmp_path):
     sf = bootstrap(f"sqlite:///{tmp_path / 'theses.db'}")  # SQLite create_all builds the table
     app.dependency_overrides[get_session_factory] = lambda: sf
