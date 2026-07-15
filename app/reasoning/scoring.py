@@ -154,7 +154,10 @@ def classify(score: float, prev: str | None, config: dict) -> str:
 
 
 def score_holding(holding: dict, metric: dict | None, order_flow: dict | None,
-                  fundamentals: dict | None, meta: dict | None, prev: str | None, config: dict) -> dict:
+                  fundamentals: dict | None, meta: dict | None, prev: str | None, config: dict,
+                  news: list | None = None) -> dict:
+    from ..analytics.news import score_news_risk
+
     ltp = holding.get("ltp")
     weight = holding.get("weight_pct")
     target = (meta or {}).get("target_weight_pct")
@@ -164,7 +167,7 @@ def score_holding(holding: dict, metric: dict | None, order_flow: dict | None,
         "fundamental": score_fundamental(fundamentals),
         "technical": score_technical(metric, ltp),
         "valuation": score_valuation(fundamentals),
-        "news_risk": None,     # pending news + LLM (Phase 4b)
+        "news_risk": score_news_risk(news),   # None when no material filings -> composite renormalizes
         "portfolio_fit": score_portfolio_fit(weight, target, config),
     }
     weights = ((config.get("scoring") or {}).get("weights")) or DEFAULT_WEIGHTS

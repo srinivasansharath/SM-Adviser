@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
+from ..analytics.news import has_negative_news, material_items
 from ..storage.models import Holding, MarketFlow, Metric, OrderFlow, Recommendation, Score, Snapshot
 from .signals import evaluate_flags
 
@@ -40,6 +41,9 @@ def gather_report_data(session, run_date: date, config: dict) -> dict:
     # Fundamentals were snapshotted for audit (kind='fundamentals') as {symbol: {ratios}}.
     fsnap = session.query(Snapshot).filter_by(run_date=run_date, kind="fundamentals").first()
     fundamentals = fsnap.payload if fsnap and isinstance(fsnap.payload, dict) else {}
+
+    nsnap = session.query(Snapshot).filter_by(run_date=run_date, kind="news").first()
+    news = nsnap.payload if nsnap and isinstance(nsnap.payload, dict) else {}
 
     # Real intraday day-change comes from the frozen holdings snapshot (Kite payload).
     snap = session.query(Snapshot).filter_by(run_date=run_date, kind="holdings").first()
@@ -80,9 +84,11 @@ def gather_report_data(session, run_date: date, config: dict) -> dict:
                 "confidence": rec.confidence if rec else None,
                 "prev_classification": rec.prev_classification if rec else None,
                 "rec_reason": rec.reason if rec else None,
-                # Analysis one-pager inputs: the six sub-scores + fundamentals ratios.
+                # Analysis one-pager inputs: the six sub-scores + fundamentals ratios + filings.
                 "scores": _score_dict(scores.get(h.symbol)),
                 "fundamentals": fundamentals.get(h.symbol) or {},
+                "news": material_items(news.get(h.symbol)),
+                "news_flag": has_negative_news(news.get(h.symbol)),
                 **md,
                 **ofd,
                 **flags,
@@ -101,6 +107,8 @@ def gather_report_data(session, run_date: date, config: dict) -> dict:
 
     # "Needs attention" prefers the classification when present, else the technical flag.
     def needs_attention(r: dict) -> bool:
+        if r.get("news_flag"):  # a material negative filing always surfaces (decision A)
+            return True
         if r["classification"]:
             return r["classification"] not in ("Hold", "Accumulate Candidate")
         return r["flag"] != "ok"

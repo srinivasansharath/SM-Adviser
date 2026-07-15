@@ -24,6 +24,7 @@ from ..connectors import get_connector
 from ..connectors.base import PortfolioConnector
 from ..connectors.fundamentals import FundamentalsConnector
 from ..connectors.market_data import MarketDataConnector
+from ..connectors.news import NewsConnector
 from ..connectors.order_flow import OrderFlowConnector
 from ..reasoning.llm import LLMClient
 from ..reasoning.narrative import generate_narrative
@@ -159,6 +160,7 @@ def run(
     market_data: MarketDataConnector | None = None,
     order_flow: OrderFlowConnector | None = None,
     fundamentals: FundamentalsConnector | None = None,
+    news: NewsConnector | None = None,
     theses: dict | None = None,
     llm: LLMClient | None = None,
     render: bool = False,
@@ -237,9 +239,35 @@ def run(
             )
             session.commit()
 
+    news_data = None
+    if news is not None:
+        news_data = {}
+        for h in holdings:
+            sym = h["tradingsymbol"]
+            try:
+                news_data[sym] = news.get_announcements(sym, exchange=h.get("exchange", "NSE"))
+            except Exception:
+                news_data[sym] = []
+        with session_factory() as session:  # freeze for audit
+            session.query(Snapshot).filter(
+                Snapshot.run_date == run_date, Snapshot.kind == "news"
+            ).delete()
+            session.add(
+                Snapshot(
+                    run_date=run_date,
+                    kind="news",
+                    source=news.name,
+                    payload=news_data,
+                    fetched_at=datetime.now(timezone.utc),
+                )
+            )
+            session.commit()
+
     recommendations = 0
     if theses is not None:
-        recommendations = run_scoring(session_factory, run_date, theses, config, fundamentals_data)
+        recommendations = run_scoring(
+            session_factory, run_date, theses, config, fundamentals_data, news_data
+        )
 
     summary = {
         "run_date": str(run_date),
@@ -259,8 +287,8 @@ def run(
 
     narrative = None
     if llm is not None and theses is not None and data is not None:
-        narrative = generate_narrative(llm, data, theses, fundamentals_data)
-        _store_llm_call(session_factory, run_date, build_user_prompt(data, theses, fundamentals_data), narrative["usage"])
+        narrative = generate_narrative(llm, data, theses, fundamentals_data, news_data)
+        _store_llm_call(session_factory, run_date, build_user_prompt(data, theses, fundamentals_data, news_data), narrative["usage"])
         summary["narrative"] = True
         summary["narrative_violations"] = len(narrative["violations"])
         summary["llm_tokens"] = narrative["usage"].input_tokens + narrative["usage"].output_tokens
@@ -273,6 +301,7 @@ def run(
 def main() -> None:
     from ..connectors.fundamentals import get_fundamentals
     from ..connectors.market_data import get_market_data
+    from ..connectors.news import get_news
     from ..connectors.order_flow import get_order_flow
     from ..reasoning.llm import get_llm
     from ..reasoning.theses import load_theses_from_db, seed_theses_from_yaml
@@ -286,6 +315,7 @@ def main() -> None:
         market_data=get_market_data(),
         order_flow=get_order_flow(),
         fundamentals=get_fundamentals(),
+        news=get_news(),  # BSE corporate announcements
         theses=load_theses_from_db(sf),  # theses now live in the DB (app-editable)
         llm=get_llm(get_settings()),  # None if no ANTHROPIC_API_KEY -> narrative skipped
         render=True,

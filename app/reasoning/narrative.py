@@ -29,9 +29,9 @@ def _parse_json(text: str) -> dict:
 
 
 def generate_narrative(llm: LLMClient, data: dict, theses: dict, fundamentals_data: dict | None,
-                       max_tokens: int = 4000) -> dict:
+                       news_data: dict | None = None, max_tokens: int = 4000) -> dict:
     """Return {"executive", "holdings": {sym: {thesis_status, note}}, "usage", "violations"}."""
-    prompt = build_user_prompt(data, theses, fundamentals_data)
+    prompt = build_user_prompt(data, theses, fundamentals_data, news_data)
     resp: LLMResponse = llm.complete(SYSTEM_PROMPT, prompt, max_tokens=max_tokens)
     parsed = _parse_json(resp.text)
 

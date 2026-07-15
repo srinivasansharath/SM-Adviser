@@ -20,4 +20,5 @@ FEATURES = [
     "full_report",     # GET /report/latest
     "intraday",        # widget.json carries near-live prices (prices_as_of)
     "thesis_editing",  # GET /theses, PUT /theses/{symbol}
+    "news",            # corporate-announcement filings feed scoring + the analysis page
 ]

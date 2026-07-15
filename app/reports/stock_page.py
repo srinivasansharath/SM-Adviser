@@ -83,6 +83,23 @@ def _fundamentals_rows(fund: dict) -> str:
     return f'<div class="grid">{"".join(cells)}</div>' if cells else '<div class="muted">—</div>'
 
 
+def _news_rows(news: list | None) -> str:
+    items = news or []
+    if not items:
+        return '<div class="muted">No material filings in the last 30 days.</div>'
+    out = []
+    for i in items[:8]:
+        cat = _esc(i.get("subcategory") or i.get("category") or "")
+        head = _esc(i.get("headline") or "")
+        url = i.get("url") or ""
+        link = f'<a href="{_esc(url)}" target="_blank" rel="noopener">{head}</a>' if url else head
+        out.append(
+            f'<div class="filing"><div class="fmeta"><span class="fdate">{_esc(i.get("date") or "")}</span>'
+            f'<span class="fcat">{cat}</span></div><div class="fhead">{link}</div></div>'
+        )
+    return "".join(out)
+
+
 def _evidence_grid(row: dict) -> str:
     def cell(label, val):
         return f'<div class="kv"><span>{label}</span><b>{val}</b></div>'
@@ -182,6 +199,10 @@ h1{{font-size:1.7rem;margin:0}} h2{{font-size:.95rem;margin:0 0 10px;color:#333}
 .grid{{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px}}
 .kv{{display:flex;justify-content:space-between;border-bottom:1px solid rgba(128,128,128,.15);padding:4px 0;font-size:.9rem}}
 .kv span{{color:#8e8e93}}
+.filing{{padding:6px 0;border-bottom:1px solid rgba(128,128,128,.15)}}
+.fmeta{{display:flex;gap:8px;font-size:.72rem;color:#8e8e93;margin-bottom:2px}}
+.fcat{{font-weight:600}}
+.fhead{{font-size:.88rem}} .fhead a{{color:#0a84ff;text-decoration:none}}
 .reasons{{margin:6px 0 0;padding-left:18px}} .reasons li{{margin:3px 0;font-size:.9rem}}
 .muted{{color:#8e8e93;font-size:.85rem}}
 .disc{{color:#8e8e93;font-size:.72rem;text-align:center;margin:14px 4px 4px}}
@@ -223,6 +244,11 @@ h1{{font-size:1.7rem;margin:0}} h2{{font-size:.95rem;margin:0 0 10px;color:#333}
 <section class="card">
   <h2>Fundamentals</h2>
   {_fundamentals_rows(row.get("fundamentals") or {})}
+</section>
+
+<section class="card">
+  <h2>Recent filings (BSE)</h2>
+  {_news_rows(row.get("news"))}
 </section>
 
 <div class="disc">As of {_esc(run_date)}{asof}. Personal informational use, not investment advice.</div>

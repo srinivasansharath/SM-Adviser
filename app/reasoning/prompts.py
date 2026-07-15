@@ -13,7 +13,10 @@ no "for sure", no promised price targets, no "multibagger". Bounded language onl
 - A falling PRICE is not a sell signal; falling FUNDAMENTALS or a broken THESIS are. Explicitly \
 distinguish a temporary price dip (hold a quality business) from genuine thesis impairment (exit).
 - Judge each holding's thesis by evaluating its exit_if conditions against the evidence provided \
-(scores, technicals, fundamentals). If the thesis text is missing, say confidence is limited.
+(scores, technicals, fundamentals, and recent_filings — official BSE corporate announcements). A \
+material filing (management/auditor change, credit-rating action, litigation, SEBI/exchange action, \
+fund-raising/dilution, results) is first-class evidence and can trigger an exit_if condition — but \
+do not overreact to a single routine filing. If the thesis text is missing, say confidence is limited.
 - Tie every statement to the given evidence. Be concise, specific, and honest about uncertainty.
 - Output STRICT JSON only, matching the requested schema. No text outside the JSON."""
 
@@ -25,7 +28,13 @@ _SCHEMA = (
 )
 
 
-def _holding_view(r: dict, meta: dict, fund: dict) -> dict:
+def _holding_view(r: dict, meta: dict, fund: dict, news: list | None = None) -> dict:
+    from ..analytics.news import material_items
+
+    filings = [
+        f"{i.get('date','')} {i.get('subcategory') or i.get('category') or ''}: {i.get('headline','')}"
+        for i in material_items(news)
+    ][:6]
     return {
         "symbol": r["symbol"],
         "classification": r.get("classification"),
@@ -42,12 +51,16 @@ def _holding_view(r: dict, meta: dict, fund: dict) -> dict:
         "thesis": meta.get("thesis") or "(not provided)",
         "conviction": meta.get("conviction"),
         "exit_if": meta.get("exit_if") or [],
+        "recent_filings": filings,
     }
 
 
-def build_user_prompt(data: dict, theses: dict, fundamentals_data: dict | None) -> str:
+def build_user_prompt(data: dict, theses: dict, fundamentals_data: dict | None,
+                      news_data: dict | None = None) -> str:
     holdings = [
-        _holding_view(r, (theses or {}).get(r["symbol"]) or {}, (fundamentals_data or {}).get(r["symbol"]) or {})
+        _holding_view(r, (theses or {}).get(r["symbol"]) or {},
+                      (fundamentals_data or {}).get(r["symbol"]) or {},
+                      (news_data or {}).get(r["symbol"]))
         for r in data["holdings"]
     ]
     payload = {"as_of": data["run_date"], "portfolio": data["portfolio"], "holdings": holdings}
