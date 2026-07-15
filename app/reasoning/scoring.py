@@ -155,19 +155,21 @@ def classify(score: float, prev: str | None, config: dict) -> str:
 
 def score_holding(holding: dict, metric: dict | None, order_flow: dict | None,
                   fundamentals: dict | None, meta: dict | None, prev: str | None, config: dict,
-                  news: list | None = None) -> dict:
+                  news: list | None = None, news_risk_override: float | None = None) -> dict:
     from ..analytics.news import score_news_risk
 
     ltp = holding.get("ltp")
     weight = holding.get("weight_pct")
     target = (meta or {}).get("target_weight_pct")
 
+    # LLM sentiment (direction-aware) when available, else the deterministic keyword score.
+    news_risk = news_risk_override if news_risk_override is not None else score_news_risk(news)
     subscores = {
         "thesis": score_thesis(meta, weight, metric, ltp, order_flow),
         "fundamental": score_fundamental(fundamentals),
         "technical": score_technical(metric, ltp),
         "valuation": score_valuation(fundamentals),
-        "news_risk": score_news_risk(news),   # None when no material filings -> composite renormalizes
+        "news_risk": news_risk,   # None when no material filings -> composite renormalizes
         "portfolio_fit": score_portfolio_fit(weight, target, config),
     }
     weights = ((config.get("scoring") or {}).get("weights")) or DEFAULT_WEIGHTS

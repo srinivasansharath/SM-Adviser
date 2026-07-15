@@ -45,6 +45,9 @@ def gather_report_data(session, run_date: date, config: dict) -> dict:
     nsnap = session.query(Snapshot).filter_by(run_date=run_date, kind="news").first()
     news = nsnap.payload if nsnap and isinstance(nsnap.payload, dict) else {}
 
+    nasnap = session.query(Snapshot).filter_by(run_date=run_date, kind="news_assessment").first()
+    news_assessment = nasnap.payload if nasnap and isinstance(nasnap.payload, dict) else {}
+
     # Real intraday day-change comes from the frozen holdings snapshot (Kite payload).
     snap = session.query(Snapshot).filter_by(run_date=run_date, kind="holdings").first()
     day_change = {}
@@ -89,6 +92,7 @@ def gather_report_data(session, run_date: date, config: dict) -> dict:
                 "fundamentals": fundamentals.get(h.symbol) or {},
                 "news": material_items(news.get(h.symbol)),
                 "news_flag": has_negative_news(news.get(h.symbol)),
+                "news_note": (news_assessment.get(h.symbol) or {}).get("note"),
                 **md,
                 **ofd,
                 **flags,

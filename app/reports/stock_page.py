@@ -166,6 +166,8 @@ def render_stock_page(row: dict, note: dict | None, run_date: str, prices_as_of:
     pnl_txt = "" if pnl is None else f' ({"+" if pnl >= 0 else "-"}₹{abs(pnl):,.0f})'
 
     asof = f' · prices {_esc(prices_as_of)}' if prices_as_of else ""
+    nn = row.get("news_note")
+    news_note_html = f'<p class="note" style="margin:0 0 8px">{_esc(nn)}</p>' if nn else ""
 
     return f"""<!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -248,6 +250,7 @@ h1{{font-size:1.7rem;margin:0}} h2{{font-size:.95rem;margin:0 0 10px;color:#333}
 
 <section class="card">
   <h2>Recent filings (BSE)</h2>
+  {news_note_html}
   {_news_rows(row.get("news"))}
 </section>
 

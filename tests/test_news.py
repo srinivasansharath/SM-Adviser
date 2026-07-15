@@ -1,5 +1,29 @@
 from app.analytics.news import has_negative_news, score_news_risk
 from app.connectors.news import BSEAnnouncements, MockNews, _is_material, get_news
+from app.reasoning.llm import MockLLM
+from app.reasoning.news_llm import assess_news
+from app.reasoning.scoring import score_holding
+
+
+def test_assess_news_llm_pass():
+    news_data = {"TCS": [{"material": True, "subcategory": "Dividend", "headline": "Board approves dividend"}]}
+    llm = MockLLM('{"TCS": {"news_risk": 82, "note": "dividend is shareholder-positive"}}')
+    out = assess_news(llm, news_data)
+    assert out["scores"]["TCS"]["news_risk"] == 82.0
+    assert "dividend" in out["scores"]["TCS"]["note"].lower()
+
+
+def test_assess_news_empty_when_no_llm_or_no_material():
+    assert assess_news(None, {"X": []})["scores"] == {}
+    assert assess_news(MockLLM(), {"X": [{"material": False}]})["scores"] == {}   # early-out, LLM not called
+
+
+def test_score_holding_llm_news_override_wins():
+    # A negative deterministic signal is overridden by the LLM's direction-aware score.
+    r = score_holding({"symbol": "X", "ltp": 10, "weight_pct": 5}, None, None, None, None, None, {},
+                      news=[{"material": True, "subcategory": "Resignation", "headline": "resign"}],
+                      news_risk_override=90.0)
+    assert r["subscores"]["news_risk"] == 90.0
 
 
 def test_news_risk_score():

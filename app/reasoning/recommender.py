@@ -33,7 +33,8 @@ def _prev_classification(session, symbol: str, run_date: date) -> str | None:
 
 
 def run_scoring(session_factory, run_date: date, theses: dict, config: dict,
-                fundamentals_data: dict | None = None, news_data: dict | None = None) -> int:
+                fundamentals_data: dict | None = None, news_data: dict | None = None,
+                news_scores: dict | None = None) -> int:
     count = 0
     with session_factory() as session:
         session.query(Score).filter(Score.run_date == run_date).delete()
@@ -55,6 +56,7 @@ def run_scoring(session_factory, run_date: date, theses: dict, config: dict,
                 prev,
                 config,
                 news=(news_data or {}).get(h.symbol),
+                news_risk_override=(news_scores or {}).get(h.symbol),
             )
 
             sub = result["subscores"]

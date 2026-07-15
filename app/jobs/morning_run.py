@@ -265,10 +265,31 @@ def run(
             )
             session.commit()
 
+    # LLM sentiment pass over the filings -> direction-aware news_risk (falls back to deterministic).
+    news_scores = None
+    if llm is not None and news_data:
+        from ..reasoning.news_llm import assess_news
+
+        assessment = assess_news(llm, news_data)
+        scored = assessment.get("scores") or {}
+        news_scores = {s: v["news_risk"] for s, v in scored.items()}
+        if scored:
+            with session_factory() as session:  # audit the news read
+                session.query(Snapshot).filter(
+                    Snapshot.run_date == run_date, Snapshot.kind == "news_assessment"
+                ).delete()
+                session.add(
+                    Snapshot(run_date=run_date, kind="news_assessment", source=llm.name,
+                             payload=scored, fetched_at=datetime.now(timezone.utc))
+                )
+                session.commit()
+            if assessment.get("usage"):
+                _store_llm_call(session_factory, run_date, assessment.get("prompt", ""), assessment["usage"])
+
     recommendations = 0
     if theses is not None:
         recommendations = run_scoring(
-            session_factory, run_date, theses, config, fundamentals_data, news_data
+            session_factory, run_date, theses, config, fundamentals_data, news_data, news_scores
         )
 
     summary = {
