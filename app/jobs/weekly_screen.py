@@ -23,12 +23,29 @@ from ..config import get_settings, load_yaml_config
 from ..connectors.fundamentals import FundamentalsConnector
 from ..connectors.fundamentals_universe import UniverseConnector
 from ..connectors.market_data import MarketDataConnector
+from ..reasoning.llm import LLMClient
 from ..storage.db import default_session_factory
-from ..storage.models import Candidate, Snapshot
+from ..storage.models import Candidate, LLMCall, Snapshot
 
 
 def _screening_cfg(config: dict) -> dict:
     return config.get("screening") or {}
+
+
+def _store_llm_call(session_factory, run_date, prompt: str, usage) -> None:
+    import hashlib
+
+    from ..reasoning.llm import estimate_cost
+
+    with session_factory() as session:
+        session.add(LLMCall(
+            run_date=run_date, model=usage.model,
+            prompt_hash=hashlib.sha256(prompt.encode()).hexdigest()[:32],
+            tokens=(usage.input_tokens + usage.output_tokens),
+            cost=estimate_cost(usage.model, usage.input_tokens, usage.output_tokens),
+            output_ref=None,
+        ))
+        session.commit()
 
 
 def run(
@@ -38,8 +55,10 @@ def run(
     session_factory: sessionmaker | None = None,
     run_date: date | None = None,
     config: dict | None = None,
+    llm: LLMClient | None = None,
     top_deep: int = 150,
     shortlist: int = 25,
+    llm_limit: int = 15,
     throttle: float = 0.0,
 ) -> dict:
     """Run the two-stage funnel and persist the shortlist. Returns a summary dict."""
@@ -82,6 +101,18 @@ def run(
     survivors.sort(key=lambda r: r["composite"], reverse=True)
     final = survivors[:shortlist]
 
+    # --- Stage 4: LLM deep-dive on the shortlist (thesis + exit_if + verdict); optional ---
+    assessed = 0
+    if llm is not None and final:
+        from ..reasoning.screen_llm import deep_dive
+
+        dd = deep_dive(llm, final, limit=llm_limit)
+        for r in final:
+            r["llm"] = dd["assessments"].get(r["symbol"])
+        assessed = len(dd["assessments"])
+        if dd.get("usage"):
+            _store_llm_call(session_factory, run_date, dd["prompt"], dd["usage"])
+
     # --- Persist: shortlist rows + an audit snapshot of the whole scored set ---
     with session_factory() as session:
         session.query(Candidate).filter(Candidate.run_date == run_date).delete()
@@ -113,7 +144,9 @@ def run(
         "deep_fetched": len(ranked),
         "excluded": sum(1 for r in scored if r["excluded"]),
         "shortlist": len(final),
-        "top": [{"symbol": r["symbol"], "composite": r["composite"], "buckets": r["buckets"]}
+        "assessed": assessed,
+        "top": [{"symbol": r["symbol"], "composite": r["composite"], "buckets": r["buckets"],
+                 "verdict": (r.get("llm") or {}).get("verdict")}
                 for r in final[:10]],
     }
 
@@ -122,6 +155,7 @@ def main() -> None:
     from ..connectors.fundamentals import get_fundamentals
     from ..connectors.fundamentals_universe import get_universe_source
     from ..connectors.market_data import get_market_data
+    from ..reasoning.llm import get_llm
 
     settings = get_settings()
     config = load_yaml_config(settings.portfolio_config)
@@ -135,8 +169,10 @@ def main() -> None:
         fundamentals=get_fundamentals("screener"),
         market_data=get_market_data("yfinance"),
         config=config,
+        llm=get_llm(settings),  # None if no ANTHROPIC_API_KEY -> deep-dive skipped, ranking stands
         top_deep=int(cfg.get("top_deep", 150)),
         shortlist=int(cfg.get("shortlist", 25)),
+        llm_limit=int(cfg.get("llm_limit", 15)),
         throttle=float(cfg.get("throttle_sec", 0.3)),  # be polite to screener/yfinance
     )
     print(json.dumps(summary, indent=2))
