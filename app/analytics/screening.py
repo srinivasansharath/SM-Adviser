@@ -16,6 +16,20 @@ decision support, not advice; it ranks and explains, it never says "buy".
 
 from __future__ import annotations
 
+import statistics
+
+
+def median_daily_value_cr(candles: list[dict] | None, lookback: int = 30) -> float | None:
+    """Median daily traded value (₹ crore) over the last `lookback` candles = median(close × volume).
+    The tradability signal for the liquidity gate; None when there are no usable candles."""
+    vals = [
+        c["close"] * c["volume"]
+        for c in (candles or [])[-lookback:]
+        if c.get("close") and c.get("volume")
+    ]
+    return round(statistics.median(vals) / 1e7, 2) if vals else None
+
+
 # Long-term mandate: quality + growth dominate; valuation/safety/liquidity shape the ranking.
 _WEIGHTS = {"quality": 0.30, "growth": 0.30, "valuation": 0.15, "safety": 0.15, "liquidity": 0.10}
 

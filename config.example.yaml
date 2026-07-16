@@ -69,3 +69,14 @@ data_sources:
     - "moneycontrol.com"
     - "business-standard.com"
     - "livemint.com"
+
+# New-stock screener (Phase 6) — the weekly buy-candidate funnel.
+screening:
+  # A PUBLIC screener.in screen URL carrying your universe pre-filter (e.g. Market Cap > 100).
+  screen_url: "https://www.screener.in/screens/XXXXXX/your-screen/"
+  top_deep: 150        # how many coarse-ranked names get a per-stock deep fetch
+  shortlist: 25        # final ranked shortlist size
+  throttle_sec: 0.3    # politeness delay between per-stock fetches
+  pledge_max_pct: 25   # promoter pledge above this -> hard exclude
+  min_liquidity_cr: 1.0  # median daily traded value floor (₹ cr)
+  de_max: 3.0          # extreme leverage (non-financial) -> hard exclude

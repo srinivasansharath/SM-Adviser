@@ -162,6 +162,24 @@ class LLMCall(Base):
     output_ref: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
 
+class Candidate(Base):
+    """A new-stock screener result for a weekly run (Phase 6). One row per shortlisted candidate;
+    `detail` holds the full scored dict (sub-scores, raw ratios) for audit."""
+
+    __tablename__ = "candidates"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_date: Mapped[date] = mapped_column(Date, index=True)
+    symbol: Mapped[str] = mapped_column(String(32), index=True)
+    rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    composite: Mapped[float | None] = mapped_column(Float, nullable=True)
+    buckets: Mapped[list | None] = mapped_column(JSON, nullable=True)   # ["Compounder","GARP"]
+    market_cap: Mapped[float | None] = mapped_column(Float, nullable=True)
+    excluded: Mapped[bool] = mapped_column(Integer, default=0)          # SQLite-friendly bool
+    red_flags: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    detail: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+
+
 class Thesis(Base):
     """Per-stock investment thesis — WHY the holding is owned + what breaks it. Editable from
     the app (was a hand-edited theses.yaml). Feeds the thesis sub-score + LLM exit_if evaluation."""
