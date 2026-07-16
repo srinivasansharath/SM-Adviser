@@ -38,3 +38,81 @@ def test_mock_connector_returns_fields():
 def test_factory():
     assert get_fundamentals("mock").name == "mock"
     assert isinstance(get_fundamentals("screener"), ScreenerFundamentals)
+
+
+# --- Stage-2 deep company-page parsing (hermetic, mirrors screener's real markup) ------------
+_PAGE = """
+<html><body>
+  <ul id="top-ratios">
+    <li><span class="name">Stock P/E</span><span class="number">28.4</span></li>
+    <li><span class="name">ROCE</span><span class="number">55.0</span> %</li>
+    <li><span class="name">ROE</span><span class="number">47.0</span> %</li>
+  </ul>
+  <table class="ranges-table"><tbody>
+    <tr><th>Compounded Sales Growth</th></tr>
+    <tr><td>10 Years:</td><td>9%</td></tr>
+    <tr><td>5 Years:</td><td>12%</td></tr>
+    <tr><td>3 Years:</td><td>6%</td></tr>
+  </tbody></table>
+  <table class="ranges-table"><tbody>
+    <tr><th>Compounded Profit Growth</th></tr>
+    <tr><td>5 Years:</td><td>15%</td></tr>
+    <tr><td>3 Years:</td><td>8%</td></tr>
+  </tbody></table>
+  <table class="ranges-table"><tbody>
+    <tr><th>Return on Equity</th></tr>
+    <tr><td>5 Years:</td><td>49%</td></tr>
+    <tr><td>3 Years:</td><td>52%</td></tr>
+  </tbody></table>
+  <section id="shareholding"><table>
+    <tr><th></th><th>Mar 2024</th><th>Jun 2024</th></tr>
+    <tr><td>Promoters+</td><td>72.0%</td><td>72.30%</td></tr>
+    <tr><td>Public+</td><td>28.0%</td><td>27.70%</td></tr>
+  </table></section>
+  <section id="balance-sheet"><table>
+    <tr><td>Equity Capital</td><td>320</td></tr>
+    <tr><td>Reserves</td><td>39,148</td></tr>
+    <tr><td>Borrowings+</td><td>76,141</td></tr>
+    <tr><td>Total Liabilities</td><td>174,564</td></tr>
+  </table></section>
+  <div class="pros-cons"><ul>
+    <li>Promoters have pledged 45.0% of their holding.</li>
+  </ul></div>
+</body></html>
+"""
+
+
+def _soup(html):
+    from bs4 import BeautifulSoup
+    return BeautifulSoup(html, "html.parser")
+
+
+def test_screener_deep_parse_full_page():
+    out = ScreenerFundamentals()._parse_all(_soup(_PAGE))
+    # top ratios
+    assert out["pe"] == 28.4 and out["roce"] == 55.0 and out["roe"] == 47.0
+    # multi-year growth + ROE history (durability)
+    assert out["sales_cagr_5y"] == 12.0 and out["sales_cagr_3y"] == 6.0
+    assert out["profit_cagr_5y"] == 15.0
+    assert out["roe_5y"] == 49.0 and out["roe_3y"] == 52.0
+    # governance
+    assert out["promoter_holding"] == 72.30      # latest quarter (last column)
+    assert out["promoter_pledge"] == 45.0
+    # D/E = Borrowings / (Equity Capital + Reserves) = 76141 / 39468
+    assert out["debt_to_equity"] == round(76141 / (320 + 39148), 2)
+
+
+def test_screener_pledge_absent_means_zero():
+    # A page with no pledge bullet -> pledge 0.0, not missing/None.
+    html = _PAGE.replace("Promoters have pledged 45.0% of their holding.", "Company is debt free.")
+    out = ScreenerFundamentals()._parse_all(_soup(html))
+    assert out["promoter_pledge"] == 0.0
+
+
+def test_screener_partial_page_drops_only_missing_section():
+    # Only top-ratios present: still parses, no crash, pledge defaults to 0.
+    html = '<ul id="top-ratios"><li><span class="name">ROCE</span><span class="number">18</span></li></ul>'
+    out = ScreenerFundamentals()._parse_all(_soup(html))
+    assert out["roce"] == 18.0
+    assert "debt_to_equity" not in out and "sales_cagr_5y" not in out
+    assert out["promoter_pledge"] == 0.0
