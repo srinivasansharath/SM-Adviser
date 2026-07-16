@@ -95,6 +95,17 @@ struct StockDetailView: View {
     }
 }
 
+/// The weekly new-stock screener shortlist (server-rendered one-pager), or a bundled sample in
+/// demo mode. Reached from the dashboard when the server advertises the "screening" capability.
+struct NewStockIdeasView: View {
+    var body: some View {
+        let url = SettingsStore.isDemo
+            ? Bundle.main.url(forResource: "DemoCandidates", withExtension: "html")
+            : SettingsStore.candidatesURL
+        WebReportView(title: "New-stock ideas", url: url, pdfName: "SM Adviser - Ideas")
+    }
+}
+
 /// Minimal WKWebView wrapper that sends the Authorization header and exposes the view for PDF export.
 struct AuthWebView: UIViewRepresentable {
     let url: URL

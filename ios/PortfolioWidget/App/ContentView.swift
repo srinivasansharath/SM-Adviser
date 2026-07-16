@@ -114,6 +114,14 @@ struct DashboardView: View {
                 } label: {
                     Label("Full report (view / share)", systemImage: "doc.text")
                 }
+                // Weekly new-stock ideas — shown only when the connected server supports it.
+                if SettingsStore.isDemo || SettingsStore.serverHas("screening") {
+                    NavigationLink {
+                        NewStockIdeasView()
+                    } label: {
+                        Label("New-stock ideas", systemImage: "sparkle.magnifyingglass")
+                    }
+                }
                 Button { Task { await load() } } label: { Label("Refresh now", systemImage: "arrow.clockwise") }
                 Button { WidgetCenter.shared.reloadAllTimelines() } label: {
                     Label("Reload home-screen widgets", systemImage: "square.grid.2x2")
