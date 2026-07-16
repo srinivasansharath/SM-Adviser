@@ -13,6 +13,7 @@ settings:
     SDKROOT: iphoneos
     SUPPORTED_PLATFORMS: "iphonesimulator iphoneos"
     CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: "8PYB5TU4PT"   # persist the signing team so a regen doesn't drop it
 targets:
   SMAdviser:
     type: application
