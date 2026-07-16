@@ -24,9 +24,12 @@ struct ContentView: View {
 struct DashboardView: View {
     var onDisconnect: () -> Void
 
-    @State private var data: WidgetData?
+    // Seed from the last cached payload (or the demo sample) so the dashboard shows instantly on
+    // launch instead of a blank spinner, then refreshes in the background.
+    @State private var data: WidgetData? = SettingsStore.isDemo ? .sample : PortfolioService.cached()
     @State private var error: String?
     @State private var loading = false
+    @State private var refreshFailed = false
     // Shared with the widget via the App Group, so the picker and the widget stay in sync.
     @AppStorage(PeriodStore.key, store: UserDefaults(suiteName: AppConfig.appGroup))
     private var periodRaw = 0
@@ -35,9 +38,9 @@ struct DashboardView: View {
     var body: some View {
         List {
             Section {
-                if loading {
+                if loading && data == nil {
                     HStack { ProgressView(); Text("Fetching…").foregroundStyle(.secondary) }
-                } else if let error {
+                } else if let error, data == nil {
                     Label(error, systemImage: "exclamationmark.triangle").foregroundStyle(.red)
                 } else if let data {
                     HStack(alignment: .firstTextBaseline) {
@@ -59,6 +62,10 @@ struct DashboardView: View {
                     let t = MarketClock.shortTime(data.pricesAsOf)
                     if !t.isEmpty {
                         Text("Prices as of \(t) IST").font(.caption2).foregroundStyle(.secondary)
+                    }
+                    if refreshFailed {
+                        Label("Couldn't refresh — showing last update", systemImage: "wifi.exclamationmark")
+                            .font(.caption2).foregroundStyle(.orange)
                     }
                 }
             }
@@ -137,10 +144,18 @@ struct DashboardView: View {
     }
 
     private func load() async {
-        loading = true; error = nil
+        if data == nil { loading = true }      // spinner only when there's nothing cached to show
+        error = nil; refreshFailed = false
         await PortfolioService.refreshMeta()   // capability negotiation (gates the thesis editor etc.)
         let r = await PortfolioService.fetch()
-        data = r.data; error = r.error; loading = false
+        loading = false
+        if let fresh = r.data {
+            data = fresh                        // replace with the fresh snapshot
+        } else if data == nil {
+            error = r.error                     // nothing cached -> surface the error
+        } else {
+            refreshFailed = true                // keep the cached view, just flag the failed refresh
+        }
     }
 }
 

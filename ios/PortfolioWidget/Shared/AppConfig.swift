@@ -38,6 +38,18 @@ enum SettingsStore {
         defaults.removeObject(forKey: kToken)
         defaults.removeObject(forKey: kDemo)
         defaults.removeObject(forKey: kFeatures)
+        defaults.removeObject(forKey: kCache)
+    }
+
+    // Last successfully-fetched widget.json, so the dashboard shows instantly on launch and
+    // survives a slow/failed refresh (stale-while-revalidate) instead of going blank. Cleared on
+    // disconnect so a stale portfolio never lingers for a server you're no longer connected to.
+    private static let kCache = "cached_widget"
+    static var cachedWidget: Data? {
+        get { defaults.data(forKey: kCache) }
+        set {
+            if let v = newValue { defaults.set(v, forKey: kCache) } else { defaults.removeObject(forKey: kCache) }
+        }
     }
 
     /// Demo mode: preview the app with bundled sample data, no server (for onboarding / review).

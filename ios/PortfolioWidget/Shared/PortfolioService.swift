@@ -19,10 +19,21 @@ enum PortfolioService {
             }
             let decoder = JSONDecoder()
             decoder.keyDecodingStrategy = .convertFromSnakeCase
-            return (try decoder.decode(WidgetData.self, from: data), nil)
+            let decoded = try decoder.decode(WidgetData.self, from: data)
+            SettingsStore.cachedWidget = data     // remember the last good payload
+            return (decoded, nil)
         } catch {
             return (nil, error.localizedDescription)
         }
+    }
+
+    /// Last successfully-fetched portfolio (from the App Group cache), for instant display on
+    /// launch and as a fallback when a refresh is slow or fails. nil in demo mode / when uncached.
+    static func cached() -> WidgetData? {
+        guard !SettingsStore.isDemo, let data = SettingsStore.cachedWidget else { return nil }
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        return try? decoder.decode(WidgetData.self, from: data)
     }
 
     /// Fetch /meta (capabilities + version) and cache the advertised features. Best-effort.
