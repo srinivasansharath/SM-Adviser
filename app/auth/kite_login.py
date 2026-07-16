@@ -17,6 +17,7 @@ manually via exchange_request_token().
 from __future__ import annotations
 
 import json
+import time
 from dataclasses import dataclass
 from datetime import date
 from pathlib import Path
@@ -41,6 +42,17 @@ def _request_token_from(url: str | None) -> str | None:
     return tok[0] if tok else None
 
 
+def _safe_json(resp) -> dict:
+    """Kite's login endpoints occasionally return an empty/non-JSON body on a transient hiccup.
+    Treat that as 'no data' so the caller raises a clear AutoLoginError (and retries) instead of
+    crashing with a raw JSONDecodeError."""
+    try:
+        data = resp.json()
+    except (ValueError, json.JSONDecodeError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
 def fetch_request_token(
     *,
     api_key: str,
@@ -50,11 +62,15 @@ def fetch_request_token(
     client=None,
     totp_now: Callable[[], str] | None = None,
     max_redirects: int = 10,
+    retries: int = 3,
+    retry_delay: float = 2.0,
+    sleep: Callable[[float], None] | None = None,
 ) -> str:
     """Headless login via Kite's internal web flow. Returns a request_token.
 
-    `client` (an httpx.Client-like with .post/.get) and `totp_now` are injectable for tests;
-    in production they default to httpx and pyotp.
+    The headless TOTP login is the daily run's flakiest external step, so a transient blip (empty
+    body, network wobble, momentary Kite 5xx) is retried up to `retries` times with linear backoff,
+    regenerating the TOTP each attempt. `client`, `totp_now`, and `sleep` are injectable for tests.
     """
     close = False
     if client is None:  # pragma: no cover - real network path
@@ -70,12 +86,17 @@ def fetch_request_token(
         import pyotp
 
         totp_now = lambda: pyotp.TOTP(totp_secret).now()  # noqa: E731
+    if sleep is None:
+        sleep = time.sleep
 
-    try:
+    def _attempt() -> str:
         r1 = client.post(KITE_LOGIN_URL, data={"user_id": user_id, "password": password})
-        request_id = ((r1.json() or {}).get("data") or {}).get("request_id")
+        request_id = (_safe_json(r1).get("data") or {}).get("request_id")
         if not request_id:
-            raise AutoLoginError(f"login step returned no request_id: {getattr(r1, 'text', r1)}")
+            raise AutoLoginError(
+                f"login step returned no request_id (status "
+                f"{getattr(r1, 'status_code', '?')}): {getattr(r1, 'text', r1)!r}"
+            )
 
         r2 = client.post(
             KITE_TWOFA_URL,
@@ -101,6 +122,19 @@ def fetch_request_token(
                 break
             url = location
         raise AutoLoginError("no request_token found in the login redirect chain")
+
+    try:
+        last: Exception | None = None
+        for attempt in range(1, retries + 1):
+            try:
+                return _attempt()
+            except Exception as e:  # transient Kite/network failure — back off and retry
+                last = e
+                if attempt < retries:
+                    sleep(retry_delay * attempt)  # linear backoff: 2s, 4s, ...
+        raise AutoLoginError(
+            f"headless login failed after {retries} attempts; last error: {last}"
+        ) from last
     finally:
         if close:  # pragma: no cover
             client.close()

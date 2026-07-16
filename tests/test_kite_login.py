@@ -1,3 +1,4 @@
+import json as json_module
 from datetime import date
 
 import pytest
@@ -96,6 +97,61 @@ def test_fetch_request_token_flow():
     )
     assert token == "RT_ABC"
     assert ("POST", kite_login.KITE_TWOFA_URL) in client.calls
+
+
+class _EmptyBodyResponse:
+    """Simulates Kite's login endpoint returning an empty/non-JSON body (the failure that took
+    down the 2026-07-16 run)."""
+
+    status_code = 200
+    text = ""
+    url = ""
+    headers: dict = {}
+
+    def json(self):
+        raise json_module.JSONDecodeError("Expecting value", "", 0)
+
+
+class FlakyClient:
+    """Fails the login POST with an empty body for the first `fail_n` attempts, then succeeds."""
+
+    def __init__(self, fail_n: int):
+        self.fail_n = fail_n
+        self.login_posts = 0
+        self._ok = FakeClient()
+
+    def post(self, url, data=None):
+        if url == kite_login.KITE_LOGIN_URL:
+            self.login_posts += 1
+            if self.login_posts <= self.fail_n:
+                return _EmptyBodyResponse()
+        return self._ok.post(url, data=data)
+
+    def get(self, url, follow_redirects=False):
+        return self._ok.get(url, follow_redirects=follow_redirects)
+
+
+def test_empty_login_body_raises_clear_error_not_jsondecode():
+    # An empty body must surface as AutoLoginError (clear), never a raw JSONDecodeError.
+    with pytest.raises(AutoLoginError) as ei:
+        fetch_request_token(
+            api_key="k", user_id="AB1234", password="pw", totp_secret="S",
+            client=FlakyClient(fail_n=99), totp_now=lambda: "123456",
+            retries=2, sleep=lambda _: None,
+        )
+    assert "after 2 attempts" in str(ei.value)
+
+
+def test_login_retries_then_succeeds():
+    # One transient empty-body failure, then success — the retry recovers the run.
+    client = FlakyClient(fail_n=1)
+    token = fetch_request_token(
+        api_key="k", user_id="AB1234", password="pw", totp_secret="S",
+        client=client, totp_now=lambda: "123456",
+        retries=3, sleep=lambda _: None,
+    )
+    assert token == "RT_ABC"
+    assert client.login_posts == 2  # failed once, retried, succeeded
 
 
 def test_exchange_request_token():
