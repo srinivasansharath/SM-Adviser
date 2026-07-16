@@ -80,6 +80,23 @@ services:
       - ./:/app
     command: ["python", "-m", "app.jobs.intraday_refresh"]
 
+  # Weekly new-stock screener (Phase 6). A systemd timer runs this once a week; it screens the
+  # universe, ranks buy candidates, and (if ANTHROPIC_API_KEY is set) LLM-assesses the shortlist.
+  #   docker compose --profile job run --rm weekly-screen
+  weekly-screen:
+    build: .
+    image: sm-adviser:latest
+    profiles: ["job"]
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://portfolio:${POSTGRES_PASSWORD}@db:5432/portfolio
+    volumes:
+      - ./:/app
+    command: ["python", "-m", "app.jobs.weekly_screen"]
+
   # Schema migrations. Run before starting the stack on a fresh deploy:
   #   docker compose --profile job run --rm migrate
   migrate:

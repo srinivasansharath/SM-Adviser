@@ -1,0 +1,17 @@
+# Runs the weekly new-stock screener once, in a throwaway container (Phase 6).
+# Paired with sm-adviser-weekly.timer. Install into /etc/systemd/system/.
+[Unit]
+Description=SM-Adviser weekly new-stock screener
+Wants=docker.service
+After=docker.service network-online.target
+Requires=docker.service
+# Reuse the morning failure alert (emails recent logs) if the weekly run exits non-zero.
+OnFailure=sma-morning-alert.service
+
+[Service]
+Type=oneshot
+User=sharath
+WorkingDirectory=/home/sharath/sm-adviser
+# The screen scrapes ~3k names then deep-fetches + LLM-assesses the shortlist; allow ample time.
+ExecStart=/usr/bin/docker compose --profile job run --rm weekly-screen
+TimeoutStartSec=3600

@@ -1,0 +1,13 @@
+# Fires the weekly new-stock screener (IST — set the NUC tz to Asia/Kolkata).
+# Sunday morning, before the trading week, so a fresh shortlist is ready for the week.
+# Persistent=true catches up a missed run if the NUC was off at the scheduled time.
+[Unit]
+Description=Schedule SM-Adviser weekly new-stock screener
+
+[Timer]
+OnCalendar=Sun 07:00:00
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
