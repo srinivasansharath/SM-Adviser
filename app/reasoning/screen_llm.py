@@ -96,7 +96,7 @@ def _clean(sym: str, v: dict) -> dict | None:
     }
 
 
-def deep_dive(llm: LLMClient | None, candidates: list[dict], max_tokens: int = 4000,
+def deep_dive(llm: LLMClient | None, candidates: list[dict], max_tokens: int | None = None,
               limit: int = 15) -> dict:
     """Return {"assessments": {symbol: {...}}, "usage": LLMResponse|None, "prompt": str}.
     Assesses the top `limit` candidates; empty (deterministic ranking stands) with no LLM or on failure."""
@@ -104,6 +104,10 @@ def deep_dive(llm: LLMClient | None, candidates: list[dict], max_tokens: int = 4
         return {"assessments": {}, "usage": None, "prompt": ""}
 
     picks = candidates[:limit]
+    # Each stock's assessment (thesis + exit_if + risks) is ~500-700 output tokens; too small a
+    # budget truncates the JSON mid-object and the whole parse fails. Scale to the batch size.
+    if max_tokens is None:
+        max_tokens = min(16000, 700 * len(picks) + 1000)
     payload = [_profile(c) for c in picks]
     prompt = (
         "Assess each long-term buy candidate below from its quantitative profile.\n\n"
