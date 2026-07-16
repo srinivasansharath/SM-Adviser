@@ -27,6 +27,7 @@ struct DashboardView: View {
     // Seed from the last cached payload (or the demo sample) so the dashboard shows instantly on
     // launch instead of a blank spinner, then refreshes in the background.
     @State private var data: WidgetData? = SettingsStore.isDemo ? .sample : PortfolioService.cached()
+    @State private var candidates: [CandidateData] = SettingsStore.isDemo ? CandidateData.sample : PortfolioService.cachedCandidates()
     @State private var error: String?
     @State private var loading = false
     @State private var refreshFailed = false
@@ -115,19 +116,26 @@ struct DashboardView: View {
                 }
             }
 
+            // New-stock ideas — a native table below holdings; tap "View full analysis" for the
+            // full server-rendered one-pager. Hidden when the server has no shortlist.
+            if !candidates.isEmpty {
+                Section {
+                    ForEach(candidates.prefix(10)) { c in CandidateRow(candidate: c) }
+                    NavigationLink {
+                        NewStockIdeasView()
+                    } label: {
+                        Label("View full analysis", systemImage: "sparkle.magnifyingglass")
+                    }
+                } header: {
+                    HStack { Text("New-stock ideas"); Spacer(); Text("weekly") }
+                }
+            }
+
             Section {
                 NavigationLink {
                     WebReportView(title: "Daily Report", url: SettingsStore.reportURL, pdfName: "SM Adviser Report")
                 } label: {
                     Label("Full report (view / share)", systemImage: "doc.text")
-                }
-                // Weekly new-stock ideas — shown only when the connected server supports it.
-                if SettingsStore.isDemo || SettingsStore.serverHas("screening") {
-                    NavigationLink {
-                        NewStockIdeasView()
-                    } label: {
-                        Label("New-stock ideas", systemImage: "sparkle.magnifyingglass")
-                    }
                 }
                 Button { Task { await load() } } label: { Label("Refresh now", systemImage: "arrow.clockwise") }
                 Button { WidgetCenter.shared.reloadAllTimelines() } label: {
@@ -155,6 +163,42 @@ struct DashboardView: View {
             error = r.error                     // nothing cached -> surface the error
         } else {
             refreshFailed = true                // keep the cached view, just flag the failed refresh
+        }
+        candidates = await PortfolioService.fetchCandidates()   // weekly buy-candidate shortlist
+    }
+}
+
+/// One row in the New-stock ideas table: symbol + buckets, with the composite score and a
+/// colour-coded verdict (green strong / amber watch / red avoid).
+struct CandidateRow: View {
+    let candidate: CandidateData
+
+    private var verdictColor: Color {
+        switch candidate.verdict {
+        case "strong": return .green
+        case "avoid": return .red
+        default: return .orange
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Circle().fill(verdictColor).frame(width: 8, height: 8)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(candidate.symbol).bold()
+                if !candidate.buckets.isEmpty {
+                    Text(candidate.buckets.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: 1) {
+                if let c = candidate.composite {
+                    Text("\(Int(c))").font(.subheadline).bold().monospacedDigit()
+                }
+                if let v = candidate.verdict {
+                    Text(v.capitalized).font(.caption2).foregroundStyle(verdictColor)
+                }
+            }
         }
     }
 }

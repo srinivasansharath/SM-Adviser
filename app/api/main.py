@@ -48,12 +48,13 @@ def _candidate_out(d: dict) -> CandidateOut:
     metrics = {k: data[k] for k in _METRIC_KEYS if data.get(k) is not None}
     if d.get("peg") is not None:
         metrics["peg"] = d["peg"]
+    subscores = {k: v for k, v in (d.get("subscores") or {}).items() if v is not None}
     return CandidateOut(
         symbol=d.get("symbol"), rank=d.get("rank"), composite=d.get("composite"),
         buckets=d.get("buckets") or [], verdict=llm.get("verdict"), conviction=llm.get("conviction"),
         thesis=llm.get("thesis"), tailwind=llm.get("tailwind"),
         exit_if=llm.get("exit_if") or [], risks=llm.get("risks") or [],
-        subscores=d.get("subscores") or {}, metrics=metrics,
+        subscores=subscores, metrics=metrics,
     )
 
 app = FastAPI(title="SM-Adviser API", version=SERVER_VERSION, docs_url=None, redoc_url=None)

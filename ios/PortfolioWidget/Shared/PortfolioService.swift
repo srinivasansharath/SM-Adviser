@@ -36,6 +36,31 @@ enum PortfolioService {
         return try? decoder.decode(WidgetData.self, from: data)
     }
 
+    /// Weekly new-stock shortlist (GET /candidates.json). Demo sample in demo mode; falls back to
+    /// the cached list when offline / the refresh fails, so the table survives a flaky link.
+    static func fetchCandidates() async -> [CandidateData] {
+        if SettingsStore.isDemo { return CandidateData.sample }
+        guard SettingsStore.serverHas("screening"), let url = SettingsStore.candidatesJSONURL else {
+            return cachedCandidates()
+        }
+        var req = URLRequest(url: url); req.timeoutInterval = 15
+        authorize(&req)
+        guard let (data, resp) = try? await URLSession.shared.data(for: req),
+              (resp as? HTTPURLResponse)?.statusCode == 200,
+              let decoded = try? JSONDecoder.snake.decode(CandidatesData.self, from: data) else {
+            return cachedCandidates()
+        }
+        SettingsStore.cachedCandidates = data
+        return decoded.candidates
+    }
+
+    /// Last successfully-fetched shortlist (App Group cache), for instant display on launch.
+    static func cachedCandidates() -> [CandidateData] {
+        guard !SettingsStore.isDemo, let data = SettingsStore.cachedCandidates,
+              let d = try? JSONDecoder.snake.decode(CandidatesData.self, from: data) else { return [] }
+        return d.candidates
+    }
+
     /// Fetch /meta (capabilities + version) and cache the advertised features. Best-effort.
     @discardableResult
     static func refreshMeta() async -> ServerMeta? {

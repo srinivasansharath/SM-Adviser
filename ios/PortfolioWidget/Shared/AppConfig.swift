@@ -39,6 +39,7 @@ enum SettingsStore {
         defaults.removeObject(forKey: kDemo)
         defaults.removeObject(forKey: kFeatures)
         defaults.removeObject(forKey: kCache)
+        defaults.removeObject(forKey: kCandCache)
     }
 
     // Last successfully-fetched widget.json, so the dashboard shows instantly on launch and
@@ -49,6 +50,15 @@ enum SettingsStore {
         get { defaults.data(forKey: kCache) }
         set {
             if let v = newValue { defaults.set(v, forKey: kCache) } else { defaults.removeObject(forKey: kCache) }
+        }
+    }
+
+    // Same idea for the weekly new-stock shortlist, so its table shows instantly on launch too.
+    private static let kCandCache = "cached_candidates"
+    static var cachedCandidates: Data? {
+        get { defaults.data(forKey: kCandCache) }
+        set {
+            if let v = newValue { defaults.set(v, forKey: kCandCache) } else { defaults.removeObject(forKey: kCandCache) }
         }
     }
 
@@ -66,6 +76,7 @@ enum SettingsStore {
     static var metaURL: URL? { load().flatMap { URL(string: $0.baseURL + "/meta") } }
     static var thesesURL: URL? { load().flatMap { URL(string: $0.baseURL + "/theses") } }
     static var candidatesURL: URL? { load().flatMap { URL(string: $0.baseURL + "/candidates") } }
+    static var candidatesJSONURL: URL? { load().flatMap { URL(string: $0.baseURL + "/candidates.json") } }
 
     static func thesisURL(_ symbol: String) -> URL? {
         guard let base = load()?.baseURL else { return nil }
