@@ -6,6 +6,7 @@ from app.analytics.screening import (
     peg,
     red_flags,
     score_candidate,
+    score_durability,
     score_growth,
     score_quality,
     score_safety,
@@ -44,11 +45,33 @@ def test_quality_scores_track_roe_and_skip_roce_for_banks():
 
 
 def test_growth_and_valuation():
-    assert score_growth({"sales_cagr_5y": 25, "profit_cagr_5y": 25}) > 90
+    assert score_growth({"sales_cagr_5y": 25, "profit_cagr_5y": 25}) > 85
     assert score_growth({"sales_cagr_5y": 2, "profit_cagr_5y": 1}) < 20
     assert score_growth({"pe": 20}) is None        # no CAGR -> undefined
     # PEG-led valuation: cheap growth scores higher than pricey no-growth.
     assert score_valuation({"pe": 15, "profit_cagr_5y": 25}) > score_valuation({"pe": 60, "profit_cagr_5y": 5})
+
+
+def test_durability_penalises_no_history_and_spikes():
+    # No multi-year track record -> demoted (low), NOT renormalised away.
+    assert score_durability({"roe": 160}) == 25.0
+    # A steady compounder beats a one-year spike with the same latest ROE.
+    steady = score_durability({"roe": 26, "roe_3y": 25, "roe_5y": 24, "sales_cagr_5y": 18, "profit_cagr_5y": 20})
+    spike = score_durability({"roe": 160, "roe_3y": 20, "roe_5y": 8, "sales_cagr_5y": 5, "profit_cagr_5y": 4})
+    assert steady > spike
+    assert steady > 70
+
+    # In the full composite, a no-track-record freak must rank below a durable compounder even if
+    # its latest-year numbers look spectacular.
+    freak = {"symbol": "FREAK", "roe": 165, "roce": 165, "pe": 6, "promoter_pledge": 0,
+             "sales_growth_qtr": 2900, "profit_growth_qtr": 2900, "median_daily_value_cr": 50}
+    assert composite(score_candidate(steady_row())["subscores"]) > composite(score_candidate(freak)["subscores"])
+
+
+def steady_row():
+    return {"symbol": "STEADY", "roe": 26, "roe_3y": 25, "roe_5y": 24, "roce": 30,
+            "sales_cagr_5y": 16, "profit_cagr_5y": 18, "pe": 30, "promoter_pledge": 0,
+            "median_daily_value_cr": 50}
 
 
 def test_peg():
@@ -87,8 +110,11 @@ def test_buckets_tagging():
     assert "Compounder" not in buckets(JPPOWER)            # pledged + weak ROE
     garp = {"profit_cagr_5y": 20, "pe": 18}               # PEG 0.9 -> GARP
     assert "GARP" in buckets(garp)
-    tailwind = {"profit_growth_qtr": 40, "sales_growth_qtr": 30, "sales_cagr_5y": 10}
-    assert "Tailwind" in buckets(tailwind)                 # recent accel > 5y trend
+    # Tailwind now needs a quality floor + acceleration meaningfully above the 5y trend.
+    tailwind = {"profit_growth_qtr": 40, "sales_growth_qtr": 30, "sales_cagr_5y": 10, "roce": 20}
+    assert "Tailwind" in buckets(tailwind)
+    # A junk micro-cap spike with no quality does NOT get tagged Tailwind anymore.
+    assert "Tailwind" not in buckets({"profit_growth_qtr": 900, "sales_growth_qtr": 800, "roce": 3})
 
 
 def test_score_candidate_end_to_end():

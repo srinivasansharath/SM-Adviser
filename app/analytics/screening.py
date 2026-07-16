@@ -30,8 +30,9 @@ def median_daily_value_cr(candles: list[dict] | None, lookback: int = 30) -> flo
     return round(statistics.median(vals) / 1e7, 2) if vals else None
 
 
-# Long-term mandate: quality + growth dominate; valuation/safety/liquidity shape the ranking.
-_WEIGHTS = {"quality": 0.30, "growth": 0.30, "valuation": 0.15, "safety": 0.15, "liquidity": 0.10}
+# Long-term mandate: quality + growth + DURABILITY dominate; valuation/safety/liquidity shape it.
+_WEIGHTS = {"quality": 0.24, "growth": 0.20, "durability": 0.20,
+            "valuation": 0.14, "safety": 0.14, "liquidity": 0.08}
 
 _DEFAULTS = {
     "pledge_max_pct": 25.0,      # promoter pledge above this -> hard exclude (small-cap red flag)
@@ -49,6 +50,20 @@ def _scale(x: float | None, lo: float, hi: float) -> float | None:
         return None
     frac = (x - lo) / (hi - lo)
     return round(max(0.0, min(1.0, frac)) * 100, 1)
+
+
+def _band(x: float | None, good: float, great: float) -> float | None:
+    """Concave 'higher is better' score with diminishing returns: 0..good -> 0..70 (linear), then
+    good..great -> 70..100. Rewards clearing the 'good' bar and still discriminates the exceptional
+    up to 'great', but a freak value (e.g. 165% ROCE) can't out-score a strong-but-sane one by much.
+    Non-positive -> 0 (a metric at/below zero earns nothing)."""
+    if x is None:
+        return None
+    if x <= 0:
+        return 0.0
+    if x <= good:
+        return round(x / good * 70, 1)
+    return round(min(100.0, 70 + (x - good) / (great - good) * 30), 1)
 
 
 def _avg(*vals: float | None) -> float | None:
@@ -75,22 +90,45 @@ def peg(data: dict) -> float | None:
 
 
 def score_quality(data: dict) -> float | None:
-    """ROE now + ROE consistency (5y); ROCE reinforces for non-financials."""
-    roe_now = _scale(data.get("roe"), 5, 25)
-    roe_5y = _scale(data.get("roe_5y"), 5, 25)
-    parts = [roe_now, roe_5y]
-    if not is_financial(data):
-        parts.append(_scale(data.get("roce"), 8, 30))  # ROCE only meaningful outside financials
+    """Level of quality: the DURABLE (5y) ROE, reinforced by ROCE for non-financials. Uses the 5y
+    ROE over the latest year so a one-off spike doesn't inflate it, and caps a freak ROCE."""
+    roe_5y, roe_now = data.get("roe_5y"), data.get("roe")
+    core = roe_5y if roe_5y is not None else roe_now   # durable figure preferred
+    roce = data.get("roce")
+    if core is None and roce is None:
+        return None
+    parts = [_band(core, 18, 32)]
+    if not is_financial(data) and roce is not None:
+        parts.append(_band(min(roce, 45), 20, 40))     # cap: 40% and 165% ROCE shouldn't both max
     return _avg(*parts)
 
 
 def score_growth(data: dict) -> float | None:
     """5y sales + profit CAGR (durable growth), lightly lifted by recent quarterly acceleration."""
-    base = _avg(_scale(data.get("sales_cagr_5y"), 5, 25), _scale(data.get("profit_cagr_5y"), 5, 25))
+    base = _avg(_band(data.get("sales_cagr_5y"), 15, 30), _band(data.get("profit_cagr_5y"), 15, 30))
     if base is None:
         return None
-    recent = _avg(_scale(data.get("sales_growth_qtr"), 0, 30), _scale(data.get("profit_growth_qtr"), 0, 40))
+    recent = _avg(_band(data.get("sales_growth_qtr"), 15, 40), _band(data.get("profit_growth_qtr"), 20, 60))
     return _avg(base, base, recent) if recent is not None else base  # base weighted 2x
+
+
+def score_durability(data: dict) -> float | None:
+    """Track record + CONSISTENCY — the dimension that separates a durable compounder from a one-good-
+    year fluke. Rewards a high worst-horizon ROE and a tight ROE spread across years, plus steady
+    positive 5y growth. Crucially, a name with NO multi-year history scores low (25) rather than
+    being renormalised away — no track record is demoted, not excused."""
+    roe_5y, roe_3y, roe_now = data.get("roe_5y"), data.get("roe_3y"), data.get("roe")
+    scagr, pcagr = data.get("sales_cagr_5y"), data.get("profit_cagr_5y")
+    if all(v is None for v in (roe_5y, roe_3y, scagr, pcagr)):
+        return 25.0
+    parts: list[float | None] = []
+    roes = [v for v in (roe_5y, roe_3y, roe_now) if v is not None]
+    if len(roes) >= 2:
+        parts.append(_band(min(roes), 12, 25))              # worst-horizon ROE (Coffee-Can worst year)
+        parts.append(_scale(max(roes) - min(roes), 45, 5))  # tight spread = consistent (inverted)
+    parts.append(_band(scagr, 8, 20))
+    parts.append(_band(pcagr, 8, 22))
+    return _avg(*parts)
 
 
 def score_valuation(data: dict) -> float | None:
@@ -147,32 +185,41 @@ def buckets(data: dict, cfg: dict | None = None) -> list[str]:
     """Tag which style(s) a name fits — a name can be in more than one (blend view)."""
     c = {**_DEFAULTS, **((cfg or {}).get("screening") or {})}
     out: list[str] = []
-    roe5, roe_now = data.get("roe_5y"), data.get("roe")
+    roe5, roe_now, roe3 = data.get("roe_5y"), data.get("roe"), data.get("roe_3y")
     pcagr = data.get("profit_cagr_5y")
     pledge = data.get("promoter_pledge") or 0
+    roes = [v for v in (roe5, roe3, roe_now) if v is not None]
 
-    if (roe5 or 0) >= c["compounder_roe"] and (roe_now or 0) >= c["compounder_roe"] \
-            and (pcagr or 0) >= 8 and pledge <= 10:
+    # Compounder: a real, consistent track record — REQUIRES 5y ROE (no-history names can't qualify).
+    if roe5 is not None and roe5 >= c["compounder_roe"] and (roe_now or 0) >= c["compounder_roe"] \
+            and (pcagr or 0) >= 8 and pledge <= 10 and (not roes or min(roes) >= 10):
         out.append("Compounder")
     p = peg(data)
     if (pcagr or 0) >= c["garp_growth"] and p is not None and p <= c["garp_peg_max"]:
         out.append("GARP")
-    # Recent acceleration vs the 5y trend — a proxy for a live tailwind (LLM confirms the sector story).
-    if (data.get("profit_growth_qtr") or 0) >= 25 and (data.get("sales_growth_qtr") or 0) >= 15 \
-            and (data.get("sales_growth_qtr") or 0) > (data.get("sales_cagr_5y") or 0):
+    # Tailwind: recent acceleration MEANINGFULLY above the 5y trend, on a company with real quality —
+    # not just a micro-cap quarterly spike. (LLM confirms the actual sector story in Stage 4.)
+    quality_floor = (roe5 or roe_now or 0) >= 12 or (data.get("roce") or 0) >= 15
+    sqtr = data.get("sales_growth_qtr") or 0
+    if quality_floor and sqtr >= 20 and sqtr >= 1.5 * (data.get("sales_cagr_5y") or 0.001) \
+            and (data.get("profit_growth_qtr") or 0) >= 25:
         out.append("Tailwind")
     return out
 
 
 def coarse_score(row: dict) -> float:
     """Stage-1 rank over ONLY the bulk-screen columns (no deep fetch yet). Purely to prioritise
-    which names get a per-stock deep fetch — never excludes, just orders. Higher = fetch sooner."""
-    quality = _scale(row.get("roce"), 8, 40) or 0        # ROCE is the one quality signal we get cheap
-    growth = _avg(_scale(row.get("profit_growth_qtr"), 0, 40),
-                  _scale(row.get("sales_growth_qtr"), 0, 30)) or 0
+    which names get a per-stock deep fetch — never excludes, just orders. Higher = fetch sooner.
+    ROCE is capped and quarterly growth down-weighted so freak micro-cap trailing numbers don't
+    crowd out steadier names; a mild size tilt favours those more likely to have a track record."""
+    roce = row.get("roce")
+    quality = _band(min(roce, 45) if roce is not None else None, 18, 40) or 0
+    growth = _avg(_band(row.get("profit_growth_qtr"), 15, 60),
+                  _band(row.get("sales_growth_qtr"), 12, 40)) or 0
     val = _scale(peg({"pe": row.get("pe"), "profit_cagr_5y": row.get("profit_growth_qtr")}), 3.0, 0.5)
     val = val if val is not None else (_scale(row.get("pe"), 80, 10) or 0)
-    return round(0.45 * quality + 0.35 * growth + 0.20 * val, 1)
+    size = _scale(row.get("market_cap"), 100, 20000) or 0
+    return round(0.45 * quality + 0.28 * growth + 0.15 * val + 0.12 * size, 1)
 
 
 def score_candidate(data: dict, cfg: dict | None = None) -> dict:
@@ -180,6 +227,7 @@ def score_candidate(data: dict, cfg: dict | None = None) -> dict:
     subs = {
         "quality": score_quality(data),
         "growth": score_growth(data),
+        "durability": score_durability(data),
         "valuation": score_valuation(data),
         "safety": score_safety(data),
         "liquidity": score_liquidity(data),
