@@ -64,3 +64,27 @@ class ThesisUpsert(BaseModel):
 class ThesisOut(ThesisUpsert):
     symbol: str
     updated_at: datetime | None = None
+
+
+# --- New-stock screener (Phase 6) ---
+class CandidateOut(BaseModel):
+    symbol: str
+    rank: int | None = None
+    composite: float | None = None
+    buckets: list[str] = []
+    verdict: str | None = None          # strong | watch | avoid (LLM)
+    conviction: str | None = None       # high | medium | low
+    thesis: str | None = None
+    tailwind: str | None = None
+    exit_if: list[str] = []
+    risks: list[str] = []
+    subscores: dict = {}
+    metrics: dict = {}                   # the key ratios (roe, roce, cagrs, pe, peg, ...)
+
+
+class CandidatesOut(BaseModel):
+    api_version: int
+    run_date: str | None = None
+    universe: int | None = None
+    candidates: list[CandidateOut] = []
+    disclaimer: str | None = None
