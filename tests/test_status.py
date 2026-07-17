@@ -138,6 +138,29 @@ def test_status_covers_new_stock_screen_and_freshness(session_factory):
     assert any("days ago" in i for i in stale["issues"])
 
 
+def test_status_grace_period_when_health_not_recorded_yet(session_factory):
+    from datetime import datetime
+
+    rd = date(2026, 7, 17)
+    with session_factory() as s:
+        # The weekly job RAN (wrote a "screen" snapshot) but health-recording wasn't deployed yet.
+        s.add(Snapshot(run_date=rd, kind="screen", source="screener_bulk",
+                       payload={"universe": 2451, "shortlist": ["X"]}, fetched_at=datetime(2026, 7, 17)))
+        s.commit()
+    status = build_status(session_factory, today=rd)
+    ns = status["services"]["new_stock_screen"]
+    assert ns["status"] == "ok" and ns["last_run"] == "2026-07-17"   # freshness from the fallback
+    assert not any("New-stock screen" in i for i in status["issues"])  # no false alarm (this fixes the deploy blip)
+
+
+def test_status_never_run_is_silent_not_an_alert(session_factory):
+    # No health AND no output snapshots -> unknown, but not a paging issue (fresh install, not broken).
+    status = build_status(session_factory, today=date(2026, 7, 17))
+    assert status["services"]["new_stock_screen"]["status"] == "unknown"
+    assert status["services"]["portfolio_review"]["status"] == "unknown"
+    assert status["issues"] == [] and status["status"] == "ok"
+
+
 def test_llm_timeout_does_not_sink_the_run(session_factory):
     # A timing-out LLM must degrade gracefully: the run still completes, scores/health persist,
     # and news_risk falls back to the deterministic score (no crash).

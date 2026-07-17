@@ -42,20 +42,28 @@ def _usage(session, today: date) -> dict:
     }
 
 
-def _service(session, kind: str, label: str, max_age_days: int, today: date, issues: list) -> dict:
+def _service(session, kind: str, label: str, max_age_days: int, today: date, issues: list,
+             fallback_kind: str | None = None) -> dict:
     """Health of one scheduled job from its latest `*_health` snapshot: per-connector status +
-    freshness. Appends human-readable problems to `issues`."""
+    freshness. Appends human-readable problems to `issues`.
+
+    Grace period: if there's no health snapshot yet but the job DID produce output recently (its
+    `fallback_kind` snapshot — holdings / screen), don't flag it (a fresh deploy that hasn't recorded
+    health is not a failure). And a job with no evidence of ever running is 'unknown' but silent —
+    not a page (it's not-yet-set-up, not broken; a job that stops after running is caught by staleness)."""
     snap = _latest(session, kind)
     payload = snap.payload if snap and isinstance(snap.payload, dict) else {}
     connectors = {k: v for k, v in payload.items() if isinstance(v, dict)}
     run_aborted = bool(payload.get("run_aborted"))
-    last_run = str(snap.run_date) if snap else None
-    age_days = (today - snap.run_date).days if snap else None
+
+    # Freshness reference: the health snapshot, else a "the job ran" fallback snapshot.
+    ref = snap or (_latest(session, fallback_kind) if fallback_kind else None)
+    last_run = str(ref.run_date) if ref else None
+    age_days = (today - ref.run_date).days if ref else None
 
     degraded = [k for k, v in connectors.items() if v.get("status") == "degraded"]
-    if last_run is None:
-        status = "unknown"
-        issues.append(f"{label}: has never run")
+    if ref is None:
+        status = "unknown"          # never run and no output -> informational only, no alert
     elif age_days is not None and age_days > max_age_days:
         status = "stale"
         issues.append(f"{label}: last ran {age_days} days ago (expected within {max_age_days})")
@@ -67,7 +75,7 @@ def _service(session, kind: str, label: str, max_age_days: int, today: date, iss
         for k in degraded:
             issues.append(f"{label}: {k} degraded — {connectors[k].get('detail', '')}".rstrip(" —"))
     else:
-        status = "ok"
+        status = "ok"               # includes: ran recently but health not yet recorded (deploy gap)
 
     meta = {k: v for k, v in payload.items() if not isinstance(v, dict) and k != "run_aborted"}
     return {"status": status, "last_run": last_run, "age_days": age_days,
@@ -80,8 +88,10 @@ def build_status(session_factory, today: date | None = None, budget_usd: float |
     today = today or date.today()
     issues: list[str] = []
     with session_factory() as session:
-        portfolio_review = _service(session, "run_health", "Portfolio review", 3, today, issues)
-        new_stock_screen = _service(session, "screen_health", "New-stock screen", 8, today, issues)
+        portfolio_review = _service(session, "run_health", "Portfolio review", 3, today, issues,
+                                    fallback_kind="holdings")
+        new_stock_screen = _service(session, "screen_health", "New-stock screen", 8, today, issues,
+                                    fallback_kind="screen")
         usage = _usage(session, today)
 
     budget = None
