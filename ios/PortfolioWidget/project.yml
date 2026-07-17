@@ -6,8 +6,8 @@ options:
   createIntermediateGroups: true
 settings:
   base:
-    MARKETING_VERSION: "2.1"
-    CURRENT_PROJECT_VERSION: "4"
+    MARKETING_VERSION: "2.2"
+    CURRENT_PROJECT_VERSION: "5"
     SWIFT_VERSION: "5.0"
     TARGETED_DEVICE_FAMILY: "1"   # iPhone only (avoids iPad multitasking-orientation requirement)
     SDKROOT: iphoneos
