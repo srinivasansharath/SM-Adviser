@@ -127,6 +127,24 @@ def test_score_candidate_end_to_end():
     assert any("pledge" in f for f in bad["red_flags"])
 
 
+def test_diversified_featured():
+    from collections import Counter
+
+    from app.analytics.screening import diversified_featured
+
+    def c(sym, comp, sector):
+        return {"symbol": sym, "composite": comp, "data": {"sector": sector}}
+
+    scored = [c("A", 90, "IT"), c("B", 88, "IT"), c("C", 85, "IT"), c("D", 84, "IT"),  # IT dominates
+              c("E", 80, "Banks"), c("F", 70, "Banks"),
+              c("G", 60, "Pharma"), c("H", 50, "Auto"), c("I", 40, "Energy")]
+    featured = diversified_featured(scored, per_sector=3, sectors=4)
+    counts = Counter(x["data"]["sector"] for x in featured)
+    assert counts["IT"] == 3                              # capped at per_sector (D dropped)
+    assert set(counts) == {"IT", "Banks", "Pharma", "Auto"}   # top 4 sectors by best composite
+    assert "Energy" not in counts                        # 5th sector excluded
+
+
 def test_coarse_score_orders_quality_growth():
     strong = coarse_score({"roce": 40, "profit_growth_qtr": 30, "sales_growth_qtr": 25, "pe": 20})
     weak = coarse_score({"roce": 6, "profit_growth_qtr": -10, "sales_growth_qtr": -5, "pe": 90})

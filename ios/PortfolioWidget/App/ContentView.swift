@@ -120,14 +120,20 @@ struct DashboardView: View {
             // full server-rendered one-pager. Hidden when the server has no shortlist.
             if !candidates.isEmpty {
                 Section {
-                    ForEach(candidates.prefix(10)) { c in CandidateRow(candidate: c) }
+                    ForEach(candidates) { c in
+                        NavigationLink {
+                            NewStockIdeasView(anchor: c.symbol)   // jumps to this stock's section
+                        } label: {
+                            CandidateRow(candidate: c)
+                        }
+                    }
                     NavigationLink {
                         NewStockIdeasView()
                     } label: {
                         Label("View full analysis", systemImage: "sparkle.magnifyingglass")
                     }
                 } header: {
-                    HStack { Text("New-stock ideas"); Spacer(); Text("weekly") }
+                    HStack { Text("New-stock ideas"); Spacer(); Text("weekly · sector mix") }
                 }
             }
 
@@ -173,30 +179,37 @@ struct DashboardView: View {
 struct CandidateRow: View {
     let candidate: CandidateData
 
-    private var verdictColor: Color {
-        switch candidate.verdict {
-        case "strong": return .green
-        case "avoid": return .red
-        default: return .orange
-        }
+    // Colour by the composite score (the real quality differentiator), not the verdict — across a
+    // shortlist the verdict is often uniformly "watch", so it can't carry the signal on its own.
+    private var scoreColor: Color {
+        guard let c = candidate.composite else { return .gray }
+        return c >= 85 ? .green : c >= 70 ? .orange : .red
+    }
+
+    // "Watch · medium" — conviction (high/medium/low) varies even when the verdict doesn't.
+    private var verdictLine: String {
+        [candidate.verdict?.capitalized, candidate.conviction]
+            .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
     }
 
     var body: some View {
-        HStack(spacing: 8) {
-            Circle().fill(verdictColor).frame(width: 8, height: 8)
+        HStack(spacing: 10) {
+            Circle().fill(scoreColor).frame(width: 8, height: 8)
             VStack(alignment: .leading, spacing: 2) {
                 Text(candidate.symbol).bold()
-                if !candidate.buckets.isEmpty {
-                    Text(candidate.buckets.joined(separator: " · ")).font(.caption).foregroundStyle(.secondary)
+                let sub = [candidate.sector, candidate.buckets.first]
+                    .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+                if !sub.isEmpty {
+                    Text(sub).font(.caption).foregroundStyle(.secondary)
                 }
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 1) {
                 if let c = candidate.composite {
-                    Text("\(Int(c))").font(.subheadline).bold().monospacedDigit()
+                    Text("\(Int(c))").font(.title3).bold().monospacedDigit().foregroundStyle(scoreColor)
                 }
-                if let v = candidate.verdict {
-                    Text(v.capitalized).font(.caption2).foregroundStyle(verdictColor)
+                if !verdictLine.isEmpty {
+                    Text(verdictLine).font(.caption2).foregroundStyle(.secondary)
                 }
             }
         }

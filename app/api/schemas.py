@@ -71,6 +71,8 @@ class CandidateOut(BaseModel):
     symbol: str
     rank: int | None = None
     composite: float | None = None
+    sector: str | None = None
+    industry: str | None = None
     buckets: list[str] = []
     verdict: str | None = None          # strong | watch | avoid (LLM)
     conviction: str | None = None       # high | medium | low

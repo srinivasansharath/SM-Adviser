@@ -96,13 +96,31 @@ struct StockDetailView: View {
 }
 
 /// The weekly new-stock screener shortlist (server-rendered one-pager), or a bundled sample in
-/// demo mode. Reached from the dashboard when the server advertises the "screening" capability.
+/// demo mode. An optional `anchor` (a stock symbol) deep-links to that stock's section in the
+/// report, so tapping a row lands on the right analysis instead of the top of the page.
 struct NewStockIdeasView: View {
-    var body: some View {
-        let url = SettingsStore.isDemo
+    var anchor: String? = nil
+
+    /// Match the server's anchor ids (candidates_page._anchor): non-alphanumerics -> "-".
+    private static func fragment(for symbol: String) -> String {
+        let mapped = symbol.map { ($0.isLetter || $0.isNumber) ? $0 : "-" }
+        var s = String(mapped)
+        while s.contains("--") { s = s.replacingOccurrences(of: "--", with: "-") }
+        return "stock-" + s.trimmingCharacters(in: CharacterSet(charactersIn: "-"))
+    }
+
+    private var url: URL? {
+        let base = SettingsStore.isDemo
             ? Bundle.main.url(forResource: "DemoCandidates", withExtension: "html")
             : SettingsStore.candidatesURL
-        WebReportView(title: "New-stock ideas", url: url, pdfName: "SM Adviser - Ideas")
+        guard let base, let anchor else { return base }
+        var comps = URLComponents(url: base, resolvingAgainstBaseURL: false)
+        comps?.fragment = Self.fragment(for: anchor)
+        return comps?.url ?? base
+    }
+
+    var body: some View {
+        WebReportView(title: anchor ?? "New-stock ideas", url: url, pdfName: "SM Adviser - Ideas")
     }
 }
 
@@ -112,13 +130,21 @@ struct AuthWebView: UIViewRepresentable {
     let token: String
     var exporter: WebPDFExporter?
 
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
     func makeUIView(context: Context) -> WKWebView {
         let webView = WKWebView()
         webView.isOpaque = false
         webView.backgroundColor = .clear
+        webView.navigationDelegate = context.coordinator
+        context.coordinator.fragment = url.fragment   // scroll target after load (deep-link)
         exporter?.webView = webView
         if url.isFileURL {
-            webView.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+            // loadFileURL wants a plain path; strip any fragment — we scroll via JS on didFinish.
+            var comps = URLComponents(url: url, resolvingAgainstBaseURL: false)
+            comps?.fragment = nil
+            let fileURL = comps?.url ?? url
+            webView.loadFileURL(fileURL, allowingReadAccessTo: fileURL.deletingLastPathComponent())
         } else {
             var request = URLRequest(url: url)
             if !token.isEmpty {
@@ -130,6 +156,18 @@ struct AuthWebView: UIViewRepresentable {
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {}
+
+    /// Scrolls to the deep-link anchor once the page finishes loading (reliable for file + https).
+    final class Coordinator: NSObject, WKNavigationDelegate {
+        var fragment: String?
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            guard let f = fragment, !f.isEmpty else { return }
+            // f is sanitised to [A-Za-z0-9-] by NewStockIdeasView, so it's safe to inline.
+            webView.evaluateJavaScript(
+                "var e=document.getElementById('\(f)'); if(e){e.scrollIntoView(true);}",
+                completionHandler: nil)
+        }
+    }
 }
 
 /// Bridges UIActivityViewController (the iOS share sheet) into SwiftUI.

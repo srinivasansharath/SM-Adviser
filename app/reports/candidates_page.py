@@ -9,6 +9,12 @@ Advisory only — it ranks and explains ideas; it is not a recommendation to buy
 from __future__ import annotations
 
 import html
+import re
+
+
+def _anchor(text: str, prefix: str) -> str:
+    """Stable HTML id for deep-linking (e.g. stock-TCS, sec-Financial-Services)."""
+    return prefix + "-" + re.sub(r"[^A-Za-z0-9]+", "-", str(text)).strip("-")
 
 _VERDICT_COLOR = {"strong": "#16a34a", "watch": "#d97706", "avoid": "#dc2626"}
 _SUB_LABELS = {"quality": "Quality", "growth": "Growth", "durability": "Durability",
@@ -79,9 +85,12 @@ def _chips(buckets: list | None) -> str:
 
 def _card(c: dict) -> str:
     sym = _esc(c.get("symbol"))
-    rank = c.get("rank")
+    anchor = _anchor(c.get("symbol") or "", "stock")   # deep-link target: #stock-<SYMBOL>
     comp = c.get("composite")
     comp_txt = "—" if comp is None else f"{comp:.0f}"
+    data = c.get("data") or {}
+    industry = data.get("industry")
+    ind_html = f'<div class="ind">{_esc(industry)}</div>' if industry else ""
     llm = c.get("llm") or {}
     verdict = (llm.get("verdict") or "").lower()
     vbadge = ""
@@ -94,12 +103,12 @@ def _card(c: dict) -> str:
     tailwind = llm.get("tailwind")
     tw_html = (f'<p class="tw">Tailwind: {_esc(tailwind)}</p>'
                if tailwind and tailwind.lower() != "none" else "")
-    return f"""<section class="card">
- <div class="top"><div><span class="rk">#{rank}</span> <span class="sym">{sym}</span>
+    return f"""<section class="card" id="{anchor}">
+ <div class="top"><div><span class="sym">{sym}</span>
    <span class="score" style="color:{_score_color(comp)}">{comp_txt}</span></div>{vbadge}</div>
- <div class="chips">{_chips(c.get("buckets"))}</div>
+ {ind_html}<div class="chips">{_chips(c.get("buckets"))}</div>
  {thesis_html}{tw_html}
- {_metrics(c.get("data") or {}, c.get("peg"))}
+ {_metrics(data, c.get("peg"))}
  <div class="subs">{_subscores(c.get("subscores") or {})}</div>
  {_list("Exit if", llm.get("exit_if"))}
  {_list("Risks", llm.get("risks"))}
@@ -109,7 +118,24 @@ def _card(c: dict) -> str:
 def render_candidates_page(candidates: list[dict], run_date: str, universe: int | None = None) -> str:
     n = len(candidates)
     uni = f" · {universe} screened" if universe else ""
-    cards = "".join(_card(c) for c in candidates) or '<section class="card"><p class="note">No candidates yet — the weekly screen has not produced a shortlist.</p></section>'
+    # Group by sector, preserving the order candidates arrive in (already sector-grouped by the job).
+    groups: dict[str, list[dict]] = {}
+    for c in candidates:
+        sec = (c.get("data") or {}).get("sector") or "Other"
+        groups.setdefault(sec, []).append(c)
+
+    if not groups:
+        cards = '<section class="card"><p class="note">No candidates yet — the weekly screen has not produced a shortlist.</p></section>'
+        toc = ""
+    else:
+        toc = '<div class="toc">' + " ".join(
+            f'<a href="#{_anchor(sec, "sec")}">{_esc(sec)} ({len(rows)})</a>'
+            for sec, rows in groups.items()) + "</div>"
+        parts = []
+        for sec, rows in groups.items():
+            parts.append(f'<h2 class="sec-h" id="{_anchor(sec, "sec")}">{_esc(sec)}</h2>')
+            parts.extend(_card(c) for c in rows)
+        cards = toc + "".join(parts)
     return f"""<!doctype html><html lang="en"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>New-stock ideas — {_esc(run_date)}</title>
@@ -118,10 +144,15 @@ def render_candidates_page(candidates: list[dict], run_date: str, universe: int 
 *{{box-sizing:border-box}}
 body{{font:15px/1.55 -apple-system,system-ui,Segoe UI,Roboto,sans-serif;margin:0;padding:14px;color:#111;background:#f2f2f7}}
 @media (prefers-color-scheme:dark){{body{{color:#e5e5ea;background:#000}}.card{{background:#1c1c1e!important}}
- .bar{{background:#2c2c2e!important}} h1{{color:#e5e5ea}} .chip{{background:#2c2c2e!important;color:#c7c7cc!important}}}}
+ .bar{{background:#2c2c2e!important}} h1{{color:#e5e5ea}}
+ .chip,.toc a{{background:#2c2c2e!important;color:#c7c7cc!important}}}}
 h1{{font-size:1.5rem;margin:0 0 2px}}
 .hsub{{color:#8e8e93;font-size:.85rem;margin-bottom:12px}}
-.card{{background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06)}}
+.card{{background:#fff;border-radius:14px;padding:14px 16px;margin-bottom:12px;box-shadow:0 1px 3px rgba(0,0,0,.06);scroll-margin-top:14px}}
+.sec-h{{font-size:.9rem;margin:18px 2px 8px;color:#8e8e93;text-transform:uppercase;letter-spacing:.04em;scroll-margin-top:14px}}
+.toc{{margin:0 0 14px}}
+.toc a{{display:inline-block;background:#eef;color:#3730a3;border-radius:999px;padding:3px 10px;margin:0 6px 6px 0;font-size:.72rem;font-weight:600;text-decoration:none}}
+.ind{{color:#8e8e93;font-size:.78rem;margin:2px 0 0}}
 .top{{display:flex;align-items:center;justify-content:space-between;gap:10px}}
 .rk{{color:#8e8e93;font-weight:700}} .sym{{font-size:1.2rem;font-weight:800}}
 .score{{font-size:1.1rem;font-weight:800;margin-left:6px;font-variant-numeric:tabular-nums}}

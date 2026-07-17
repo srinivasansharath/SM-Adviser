@@ -102,6 +102,17 @@ def test_screener_deep_parse_full_page():
     assert out["debt_to_equity"] == round(76141 / (320 + 39148), 2)
 
 
+def test_screener_parses_sector():
+    html = ('<div>'
+            '<a href="/market/IN07/">Industrials</a>'
+            '<a href="/market/IN07/IN0702/">Capital Goods</a>'
+            '<a href="/market/IN07/IN0702/IN070203/">Electrical Equipment</a>'
+            '</div>')
+    out = ScreenerFundamentals()._parse_all(_soup(html))
+    assert out["sector"] == "Industrials"       # macro sector (first /market/ link)
+    assert out["industry"] == "Capital Goods"
+
+
 def test_screener_pledge_absent_means_zero():
     # A page with no pledge bullet -> pledge 0.0, not missing/None.
     html = _PAGE.replace("Promoters have pledged 45.0% of their holding.", "Company is debt free.")

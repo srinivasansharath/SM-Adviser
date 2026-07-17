@@ -222,6 +222,22 @@ def coarse_score(row: dict) -> float:
     return round(0.45 * quality + 0.28 * growth + 0.15 * val + 0.12 * size, 1)
 
 
+def diversified_featured(scored: list[dict], per_sector: int = 3, sectors: int = 4) -> list[dict]:
+    """Sector-diversified shortlist: the top `per_sector` candidates from each of the top `sectors`
+    sectors, so one hot sector (e.g. solar/renewables) can't dominate the whole table. Sectors are
+    ranked by their strongest candidate's composite; within a sector, by composite. Returns a flat
+    list grouped sector-by-sector (so the table visibly mixes sectors)."""
+    by_sector: dict[str, list[dict]] = {}
+    for r in sorted(scored, key=lambda r: r.get("composite") or 0, reverse=True):
+        sec = ((r.get("data") or {}).get("sector")) or "Other"
+        by_sector.setdefault(sec, []).append(r)
+    ranked = sorted(by_sector.items(), key=lambda kv: kv[1][0].get("composite") or 0, reverse=True)
+    featured: list[dict] = []
+    for _sec, rows in ranked[:sectors]:
+        featured.extend(rows[:per_sector])
+    return featured
+
+
 def score_candidate(data: dict, cfg: dict | None = None) -> dict:
     """Full Stage-2 assessment: sub-scores, composite, buckets, red-flag gate."""
     subs = {

@@ -1,8 +1,9 @@
+from collections import Counter
 from datetime import date
 
 from app.analytics.screening import median_daily_value_cr
 from app.connectors.fundamentals import MockFundamentals
-from app.connectors.fundamentals_universe import MockUniverse, UniverseConnector
+from app.connectors.fundamentals_universe import UniverseConnector
 from app.connectors.market_data import MockMarketData
 from app.jobs import weekly_screen
 from app.storage.models import Candidate, Snapshot
@@ -35,7 +36,7 @@ class _Fund(MockFundamentals):
 
     def get_fundamentals(self, symbol, exchange="NSE"):
         base = {"roe": 22, "roe_5y": 20, "sales_cagr_5y": 16, "profit_cagr_5y": 18,
-                "debt_to_equity": 0.3, "promoter_holding": 60}
+                "debt_to_equity": 0.3, "promoter_holding": 60, "sector": "Industrials"}
         base["promoter_pledge"] = 70.0 if symbol == "PLEDGED" else 0.0
         return base
 
@@ -44,35 +45,56 @@ def test_weekly_run_gates_and_ranks(session_factory):
     rd = date(2026, 7, 16)
     summary = weekly_screen.run(
         universe=_Uni(), fundamentals=_Fund(), market_data=MockMarketData(),
-        session_factory=session_factory, run_date=rd, config={}, top_deep=10, shortlist=10,
+        session_factory=session_factory, run_date=rd, config={}, top_deep=10,
     )
     assert summary["universe"] == 2
     assert summary["deep_fetched"] == 2
     assert summary["excluded"] == 1                 # PLEDGED (70% pledge) hard-gated
     assert summary["shortlist"] == 1
+    assert summary["sectors"] == ["Industrials"]
 
     with session_factory() as s:
         cands = s.query(Candidate).filter_by(run_date=rd).all()
         assert [c.symbol for c in cands] == ["GOOD"]   # only the clean name persisted
-        assert cands[0].rank == 1 and cands[0].composite is not None
-        assert "Compounder" in (cands[0].buckets or [])
+        assert cands[0].composite is not None and "Compounder" in (cands[0].buckets or [])
         snap = s.query(Snapshot).filter_by(run_date=rd, kind="screen").one()
         assert snap.payload["shortlist"] == ["GOOD"] and snap.payload["excluded"] == 1
 
 
-def test_weekly_run_with_mock_universe(session_factory):
+# --- sector diversification -----------------------------------------------------------------
+class _MultiUni(UniverseConnector):
+    name = "multi"
+
+    def get_universe(self):
+        return [{"symbol": f"S{i}", "roce": 40 - i, "market_cap": 5000, "profit_growth_qtr": 20,
+                 "sales_growth_qtr": 15, "pe": 20} for i in range(12)]
+
+
+class _MultiFund(MockFundamentals):
+    name = "mf"
+    _SECTORS = ["Industrials", "Financials", "IT", "Healthcare", "Energy"]
+
+    def get_fundamentals(self, symbol, exchange="NSE"):
+        i = int(symbol[1:])
+        return {"roe": 25, "roe_5y": 22, "sales_cagr_5y": 16, "profit_cagr_5y": 18,
+                "debt_to_equity": 0.3, "promoter_holding": 60, "promoter_pledge": 0,
+                "sector": self._SECTORS[i % 5]}
+
+
+def test_weekly_run_diversifies_by_sector(session_factory):
     rd = date(2026, 7, 16)
     summary = weekly_screen.run(
-        universe=MockUniverse(), fundamentals=MockFundamentals(), market_data=MockMarketData(),
-        session_factory=session_factory, run_date=rd, config={}, top_deep=8, shortlist=5,
+        universe=_MultiUni(), fundamentals=_MultiFund(), market_data=MockMarketData(),
+        session_factory=session_factory, run_date=rd, config={}, top_deep=12, per_sector=3, sectors=4,
     )
-    assert summary["universe"] == 8
+    # 12 names across 5 sectors -> the featured set spans at most the top 4 sectors, <= 3 per sector.
+    assert 1 < len(summary["sectors"]) <= 4
     with session_factory() as s:
-        cands = s.query(Candidate).filter_by(run_date=rd).order_by(Candidate.rank).all()
-        assert len(cands) == summary["shortlist"] <= 5
-        comps = [c.composite for c in cands]
-        assert comps == sorted(comps, reverse=True)     # ranked by composite desc
-        assert all(c.excluded == 0 for c in cands)
+        cands = s.query(Candidate).filter_by(run_date=rd).all()
+        counts = Counter((c.detail.get("data") or {}).get("sector") for c in cands)
+        assert 2 <= len(counts) <= 4                     # genuinely mixed, capped at `sectors`
+        assert all(v <= 3 for v in counts.values())     # no sector exceeds `per_sector`
+        assert sum(counts.values()) > max(counts.values())   # not dominated by one sector
 
 
 def test_weekly_run_idempotent(session_factory):

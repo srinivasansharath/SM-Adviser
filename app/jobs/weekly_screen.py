@@ -18,7 +18,12 @@ from datetime import date, datetime, timezone
 
 from sqlalchemy.orm import sessionmaker
 
-from ..analytics.screening import coarse_score, median_daily_value_cr, score_candidate
+from ..analytics.screening import (
+    coarse_score,
+    diversified_featured,
+    median_daily_value_cr,
+    score_candidate,
+)
 from ..config import get_settings, load_yaml_config
 from ..connectors.fundamentals import FundamentalsConnector
 from ..connectors.fundamentals_universe import UniverseConnector
@@ -57,7 +62,8 @@ def run(
     config: dict | None = None,
     llm: LLMClient | None = None,
     top_deep: int = 150,
-    shortlist: int = 25,
+    per_sector: int = 3,
+    sectors: int = 4,
     llm_limit: int = 15,
     throttle: float = 0.0,
 ) -> dict:
@@ -99,7 +105,9 @@ def run(
 
     survivors = [r for r in scored if not r["excluded"] and r["composite"] is not None]
     survivors.sort(key=lambda r: r["composite"], reverse=True)
-    final = survivors[:shortlist]
+    # Sector-diversified pick (top `per_sector` of each of the top `sectors` sectors) so the table
+    # isn't dominated by one hot sector; grouped sector-by-sector.
+    final = diversified_featured(survivors, per_sector=per_sector, sectors=sectors)
 
     # --- Stage 4: LLM deep-dive on the shortlist (thesis + exit_if + verdict); optional ---
     assessed = 0
@@ -145,9 +153,11 @@ def run(
         "excluded": sum(1 for r in scored if r["excluded"]),
         "shortlist": len(final),
         "assessed": assessed,
-        "top": [{"symbol": r["symbol"], "composite": r["composite"], "buckets": r["buckets"],
+        "sectors": sorted({(r.get("data") or {}).get("sector") or "Other" for r in final}),
+        "top": [{"symbol": r["symbol"], "composite": r["composite"],
+                 "sector": (r.get("data") or {}).get("sector"),
                  "verdict": (r.get("llm") or {}).get("verdict")}
-                for r in final[:10]],
+                for r in final],
     }
 
 
@@ -171,7 +181,8 @@ def main() -> None:
         config=config,
         llm=get_llm(settings),  # None if no ANTHROPIC_API_KEY -> deep-dive skipped, ranking stands
         top_deep=int(cfg.get("top_deep", 150)),
-        shortlist=int(cfg.get("shortlist", 25)),
+        per_sector=int(cfg.get("per_sector", 3)),
+        sectors=int(cfg.get("sectors", 4)),
         llm_limit=int(cfg.get("llm_limit", 15)),
         throttle=float(cfg.get("throttle_sec", 0.3)),  # be polite to screener/yfinance
     )

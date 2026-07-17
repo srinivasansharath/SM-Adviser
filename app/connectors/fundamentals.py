@@ -131,6 +131,23 @@ class ScreenerFundamentals(FundamentalsConnector):
         m = re.search(r"pledged\s+([\d.]+)%\s+of their holding", soup.get_text(" ", strip=True), re.I)
         return {"promoter_pledge": self._num(m.group(1)) if m else 0.0}
 
+    def _sector(self, soup) -> dict:
+        """Screener classifies each company via /market/IN.../ links (macro sector -> industry ->
+        sub-industry). The first is the macro sector we group/diversify on; the ~3rd is the industry."""
+        names = [a.get_text(strip=True) for a in soup.select('a[href*="/market/IN"]')]
+        # de-dup preserving order (screener repeats the sector link)
+        seen, uniq = set(), []
+        for n in names:
+            if n and n not in seen:
+                seen.add(n)
+                uniq.append(n)
+        out: dict = {}
+        if uniq:
+            out["sector"] = uniq[0]
+            if len(uniq) >= 2:
+                out["industry"] = uniq[1]
+        return out
+
     def _debt_to_equity(self, soup) -> dict:
         bs = soup.find(id="balance-sheet")
         tbl = bs.find("table") if bs else None
@@ -154,7 +171,7 @@ class ScreenerFundamentals(FundamentalsConnector):
         """Merge every section; each parser is defensive so a missing section drops only itself."""
         out: dict = {}
         for parser in (self._top_ratios, self._ranges, self._shareholding, self._pledge,
-                       self._debt_to_equity):
+                       self._debt_to_equity, self._sector):
             try:
                 out.update(parser(soup))
             except Exception:

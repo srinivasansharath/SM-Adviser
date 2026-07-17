@@ -51,6 +51,7 @@ def _candidate_out(d: dict) -> CandidateOut:
     subscores = {k: v for k, v in (d.get("subscores") or {}).items() if v is not None}
     return CandidateOut(
         symbol=d.get("symbol"), rank=d.get("rank"), composite=d.get("composite"),
+        sector=data.get("sector"), industry=data.get("industry"),
         buckets=d.get("buckets") or [], verdict=llm.get("verdict"), conviction=llm.get("conviction"),
         thesis=llm.get("thesis"), tailwind=llm.get("tailwind"),
         exit_if=llm.get("exit_if") or [], risks=llm.get("risks") or [],
