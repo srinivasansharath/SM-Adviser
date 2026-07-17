@@ -37,6 +37,45 @@ def _screening_cfg(config: dict) -> dict:
     return config.get("screening") or {}
 
 
+def _screen_health(universe, fundamentals, market_data, llm, rows, scored, assessed) -> dict:
+    """Per-external-API health for the weekly run — did each source return data? Feeds /status so a
+    rate-limited universe scrape, a broken fundamentals page, or a failed LLM pass surfaces."""
+    n = max(len(scored), 1)
+    with_ratios = sum(1 for r in scored if (r.get("data") or {}).get("roe") is not None)
+    with_liq = sum(1 for r in scored if (r.get("data") or {}).get("median_daily_value_cr") is not None)
+
+    def dget(x):
+        return getattr(x, "name", "?")
+
+    health: dict = {
+        "universe": {
+            "source": dget(universe),
+            "status": "ok" if len(rows) > 800 else "degraded",
+            "detail": f"{len(rows)} names"
+            + ("" if len(rows) > 800 else " (low — a band screen may be rate-limited or failing)"),
+        },
+        "fundamentals": {
+            "source": dget(fundamentals),
+            "status": "ok" if with_ratios > n * 0.5 else "degraded",
+            "detail": f"{with_ratios}/{len(scored)} deep-fetched with ratios",
+        },
+    }
+    if market_data is not None:
+        health["market_data"] = {
+            "source": dget(market_data),
+            "status": "ok" if with_liq > n * 0.5 else "degraded",
+            "detail": f"{with_liq}/{len(scored)} with a liquidity reading",
+        }
+    if llm is not None:
+        health["llm"] = {
+            "source": dget(llm),
+            "status": "ok" if assessed > 0 else "degraded",
+            "detail": f"{assessed} candidates assessed"
+            + ("" if assessed > 0 else " (LLM call failed after retries)"),
+        }
+    return health
+
+
 def _store_llm_call(session_factory, run_date, prompt: str, usage) -> None:
     import hashlib
 
@@ -143,6 +182,17 @@ def run(
                          "shortlist": [r["symbol"] for r in final]},
                 fetched_at=datetime.now(timezone.utc),
             )
+        )
+        # External-API health for /status (parallels the morning run's run_health).
+        health = _screen_health(universe, fundamentals, market_data, llm, rows, scored, assessed)
+        health["universe_count"] = len(rows)
+        health["shortlist"] = len(final)
+        session.query(Snapshot).filter(
+            Snapshot.run_date == run_date, Snapshot.kind == "screen_health"
+        ).delete()
+        session.add(
+            Snapshot(run_date=run_date, kind="screen_health", source=universe.name,
+                     payload=health, fetched_at=datetime.now(timezone.utc))
         )
         session.commit()
 

@@ -57,8 +57,11 @@ def test_dead_news_connector_flags_degraded(session_factory):
     assert "news" in summary["degraded"]
     status = build_status(session_factory, today=rd)
     assert status["status"] == "degraded"
-    assert "news" in status["degraded"]
-    assert "blocked" in status["connectors"]["news"]["detail"]
+    pr = status["services"]["portfolio_review"]
+    assert pr["status"] == "degraded"
+    assert pr["connectors"]["news"]["status"] == "degraded"
+    assert "blocked" in pr["connectors"]["news"]["detail"]
+    assert any("news" in i for i in status["issues"])
 
 
 class _UnreachablePortfolio(MockConnector):
@@ -81,9 +84,10 @@ def test_aborted_run_records_degraded_portfolio_health(session_factory):
     # ...but /status now reflects the failure instead of serving stale data.
     status = build_status(session_factory, today=rd)
     assert status["status"] == "degraded"
-    assert status["run_aborted"] is True
-    assert "portfolio" in status["degraded"]
-    assert "unreachable" in status["connectors"]["portfolio"]["detail"]
+    pr = status["services"]["portfolio_review"]
+    assert pr["status"] == "failed" and pr["run_aborted"] is True
+    assert "unreachable" in pr["connectors"]["portfolio"]["detail"]
+    assert any("aborted" in i for i in status["issues"])
 
 
 def test_build_status_aggregates_token_cost(session_factory):
@@ -93,12 +97,12 @@ def test_build_status_aggregates_token_cost(session_factory):
         s.add(LLMCall(run_date=rd, model="claude-sonnet-5", tokens=2000, cost=1.0))
         s.commit()
 
-    status = build_status(session_factory, today=rd, budget_usd=10.0)
-    assert status["usage"]["this_month"]["calls"] == 2
-    assert status["usage"]["this_month"]["tokens"] == 3000
-    assert status["usage"]["this_month"]["cost_usd"] == 1.5
-    assert status["budget"]["remaining_usd"] == 8.5
-    assert status["budget"]["over_budget"] is False
+    llm = build_status(session_factory, today=rd, budget_usd=10.0)["services"]["system"]["llm"]
+    assert llm["usage"]["this_month"]["calls"] == 2
+    assert llm["usage"]["this_month"]["tokens"] == 3000
+    assert llm["usage"]["this_month"]["cost_usd"] == 1.5
+    assert llm["budget"]["remaining_usd"] == 8.5
+    assert llm["budget"]["over_budget"] is False
 
 
 def test_build_status_flags_over_budget(session_factory):
@@ -107,7 +111,31 @@ def test_build_status_flags_over_budget(session_factory):
         s.add(LLMCall(run_date=rd, model="claude-sonnet-5", tokens=9_000_000, cost=12.0))
         s.commit()
     status = build_status(session_factory, today=rd, budget_usd=10.0)
-    assert status["budget"]["over_budget"] is True
+    assert status["services"]["system"]["llm"]["budget"]["over_budget"] is True
+    assert status["status"] == "degraded" and any("budget" in i for i in status["issues"])
+
+
+def test_status_covers_new_stock_screen_and_freshness(session_factory):
+    from datetime import datetime
+
+    rd = date(2026, 7, 15)
+    with session_factory() as s:
+        # A weekly screen_health with a rate-limited universe (degraded).
+        s.add(Snapshot(run_date=rd, kind="screen_health", source="screener_bulk",
+                       payload={"universe": {"source": "screener_bulk", "status": "degraded",
+                                             "detail": "500 names (low — a band screen may be rate-limited)"},
+                                "shortlist": 11},
+                       fetched_at=datetime(2026, 7, 15)))
+        s.commit()
+    status = build_status(session_factory, today=rd)
+    ns = status["services"]["new_stock_screen"]
+    assert ns["status"] == "degraded" and ns["shortlist"] == 11
+    assert any("New-stock screen" in i and "universe" in i for i in status["issues"])
+
+    # Same snapshot, but 20 days later -> flagged stale (weekly job hasn't run).
+    stale = build_status(session_factory, today=date(2026, 8, 4))
+    assert stale["services"]["new_stock_screen"]["status"] == "stale"
+    assert any("days ago" in i for i in stale["issues"])
 
 
 def test_llm_timeout_does_not_sink_the_run(session_factory):

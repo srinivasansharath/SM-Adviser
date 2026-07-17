@@ -98,8 +98,9 @@ def test_status_endpoint_requires_auth_and_reports_health(tmp_path):
             assert r.status_code == 200
             body = r.json()
             assert body["status"] == "degraded"
-            assert "news" in body["degraded"]
-            assert body["usage"]["all_time"]["cost_usd"] == 0.5
+            pr = body["services"]["portfolio_review"]
+            assert pr["connectors"]["news"]["status"] == "degraded"
+            assert body["services"]["system"]["llm"]["usage"]["all_time"]["cost_usd"] == 0.5
     finally:
         app.dependency_overrides.clear()
 

@@ -59,6 +59,9 @@ def test_weekly_run_gates_and_ranks(session_factory):
         assert cands[0].composite is not None and "Compounder" in (cands[0].buckets or [])
         snap = s.query(Snapshot).filter_by(run_date=rd, kind="screen").one()
         assert snap.payload["shortlist"] == ["GOOD"] and snap.payload["excluded"] == 1
+        # health snapshot for /status: fundamentals returned ratios (ok)
+        sh = s.query(Snapshot).filter_by(run_date=rd, kind="screen_health").one()
+        assert sh.payload["fundamentals"]["status"] == "ok" and "shortlist" in sh.payload
 
 
 # --- sector diversification -----------------------------------------------------------------
