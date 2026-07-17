@@ -21,6 +21,7 @@ enum PortfolioService {
             decoder.keyDecodingStrategy = .convertFromSnakeCase
             let decoded = try decoder.decode(WidgetData.self, from: data)
             SettingsStore.cachedWidget = data     // remember the last good payload
+            SettingsStore.cachedWidgetAt = Date() // ...and when we fetched it (for "Updated Xm ago")
             return (decoded, nil)
         } catch {
             return (nil, error.localizedDescription)

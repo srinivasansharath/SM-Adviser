@@ -39,6 +39,7 @@ enum SettingsStore {
         defaults.removeObject(forKey: kDemo)
         defaults.removeObject(forKey: kFeatures)
         defaults.removeObject(forKey: kCache)
+        defaults.removeObject(forKey: kCacheAt)
         defaults.removeObject(forKey: kCandCache)
     }
 
@@ -51,6 +52,13 @@ enum SettingsStore {
         set {
             if let v = newValue { defaults.set(v, forKey: kCache) } else { defaults.removeObject(forKey: kCache) }
         }
+    }
+
+    // When the cached widget payload was last successfully fetched, so the app can show "Updated Xm ago".
+    private static let kCacheAt = "cached_widget_at"
+    static var cachedWidgetAt: Date? {
+        get { let t = defaults.double(forKey: kCacheAt); return t > 0 ? Date(timeIntervalSince1970: t) : nil }
+        set { defaults.set(newValue?.timeIntervalSince1970 ?? 0, forKey: kCacheAt) }
     }
 
     // Same idea for the weekly new-stock shortlist, so its table shows instantly on launch too.

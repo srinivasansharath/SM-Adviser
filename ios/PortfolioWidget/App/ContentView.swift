@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import WidgetKit
 
 /// Branches on whether the user has connected a server yet (Home-Assistant style).
@@ -30,7 +31,9 @@ struct DashboardView: View {
     @State private var candidates: [CandidateData] = SettingsStore.isDemo ? CandidateData.sample : PortfolioService.cachedCandidates()
     @State private var error: String?
     @State private var loading = false
+    @State private var refreshing = false                       // explicit refresh in flight (button/pull)
     @State private var refreshFailed = false
+    @State private var updatedAt: Date? = SettingsStore.cachedWidgetAt   // when the data was last fetched
     // Shared with the widget via the App Group, so the picker and the widget stay in sync.
     @AppStorage(PeriodStore.key, store: UserDefaults(suiteName: AppConfig.appGroup))
     private var periodRaw = 0
@@ -60,10 +63,18 @@ struct DashboardView: View {
                         }
                     }
                     if let h = data.headline { Text(h).font(.footnote).foregroundStyle(.secondary) }
-                    let t = MarketClock.shortTime(data.pricesAsOf)
-                    if !t.isEmpty {
-                        Text("Prices as of \(t) IST").font(.caption2).foregroundStyle(.secondary)
+                    HStack(spacing: 6) {
+                        if let updatedAt {
+                            Text("Updated \(updatedAgo(updatedAt))")
+                        }
+                        let t = MarketClock.shortTime(data.pricesAsOf)
+                        if !t.isEmpty {
+                            if updatedAt != nil { Text("·") }
+                            Text("prices \(t) IST")
+                        }
+                        if refreshing { ProgressView().scaleEffect(0.7) }
                     }
+                    .font(.caption2).foregroundStyle(.secondary)
                     if refreshFailed {
                         Label("Couldn't refresh — showing last update", systemImage: "wifi.exclamationmark")
                             .font(.caption2).foregroundStyle(.orange)
@@ -148,7 +159,14 @@ struct DashboardView: View {
                 } label: {
                     Label("System health", systemImage: "waveform.path.ecg")
                 }
-                Button { Task { await load() } } label: { Label("Refresh now", systemImage: "arrow.clockwise") }
+                Button { Task { await load(explicit: true) } } label: {
+                    if refreshing {
+                        HStack(spacing: 8) { ProgressView(); Text("Refreshing…") }
+                    } else {
+                        Label("Refresh now", systemImage: "arrow.clockwise")
+                    }
+                }
+                .disabled(refreshing)
                 Button { WidgetCenter.shared.reloadAllTimelines() } label: {
                     Label("Reload home-screen widgets", systemImage: "square.grid.2x2")
                 }
@@ -158,25 +176,44 @@ struct DashboardView: View {
             }
         }
         .navigationTitle("SM Adviser")
+        .refreshable { await load(explicit: true) }   // pull-to-refresh (native, tactile)
         .task { await load() }
         .onChange(of: periodRaw) { WidgetCenter.shared.reloadAllTimelines() }
     }
 
-    private func load() async {
-        if data == nil { loading = true }      // spinner only when there's nothing cached to show
+    private func load(explicit: Bool = false) async {
+        if explicit { refreshing = true; Haptics.tap() }   // tactile: felt + a visible spinner
+        if data == nil { loading = true }      // full spinner only when there's nothing cached to show
         error = nil; refreshFailed = false
         await PortfolioService.refreshMeta()   // capability negotiation (gates the thesis editor etc.)
         let r = await PortfolioService.fetch()
-        loading = false
+        loading = false; refreshing = false
         if let fresh = r.data {
             data = fresh                        // replace with the fresh snapshot
+            updatedAt = SettingsStore.cachedWidgetAt ?? Date()   // -> "Updated just now" (demo has no cache stamp)
+            if explicit { Haptics.success() }
         } else if data == nil {
             error = r.error                     // nothing cached -> surface the error
         } else {
             refreshFailed = true                // keep the cached view, just flag the failed refresh
+            if explicit { Haptics.warning() }
         }
         candidates = await PortfolioService.fetchCandidates()   // weekly buy-candidate shortlist
     }
+
+    /// "just now" / "8 minutes ago" / "yesterday" — how old the shown data is.
+    private func updatedAgo(_ date: Date) -> String {
+        if Date().timeIntervalSince(date) < 60 { return "just now" }
+        let f = RelativeDateTimeFormatter(); f.unitsStyle = .full
+        return f.localizedString(for: date, relativeTo: Date())
+    }
+}
+
+/// Light haptic feedback for refresh actions.
+enum Haptics {
+    static func tap() { UIImpactFeedbackGenerator(style: .light).impactOccurred() }
+    static func success() { UINotificationFeedbackGenerator().notificationOccurred(.success) }
+    static func warning() { UINotificationFeedbackGenerator().notificationOccurred(.warning) }
 }
 
 /// One row in the New-stock ideas table: symbol + buckets, with the composite score and a
