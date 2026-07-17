@@ -14,6 +14,8 @@ from __future__ import annotations
 
 import json
 import re
+import time
+from typing import Callable
 
 from ..safety.guardrails import enforce_bounded_language
 from .llm import LLMClient
@@ -97,9 +99,12 @@ def _clean(sym: str, v: dict) -> dict | None:
 
 
 def deep_dive(llm: LLMClient | None, candidates: list[dict], max_tokens: int | None = None,
-              limit: int = 15) -> dict:
+              limit: int = 15, retries: int = 3, retry_delay: float = 4.0,
+              sleep: Callable[[float], None] | None = None) -> dict:
     """Return {"assessments": {symbol: {...}}, "usage": LLMResponse|None, "prompt": str}.
-    Assesses the top `limit` candidates; empty (deterministic ranking stands) with no LLM or on failure."""
+    Assesses the top `limit` candidates; empty (deterministic ranking stands) with no LLM or on failure.
+    The one LLM call is the unattended weekly run's flakiest step, so a transient failure (network
+    blip, empty/unparseable body) is retried with backoff before giving up."""
     if not llm or not candidates:
         return {"assessments": {}, "usage": None, "prompt": ""}
 
@@ -114,13 +119,23 @@ def deep_dive(llm: LLMClient | None, candidates: list[dict], max_tokens: int | N
         f"{json.dumps(payload, indent=2, default=str)}\n\n"
         f"Return STRICT JSON exactly matching this schema:\n{_SCHEMA}"
     )
-    try:
-        resp = llm.complete(_SYSTEM, prompt, max_tokens=max_tokens)
-    except Exception:
-        # Transient LLM/network failure must not sink the weekly run — deterministic ranking stands.
-        return {"assessments": {}, "usage": None, "prompt": prompt}
+    sleeper = sleep or time.sleep
+    parsed: dict = {}
+    resp = None
+    for attempt in range(1, retries + 1):
+        try:
+            resp = llm.complete(_SYSTEM, prompt, max_tokens=max_tokens)
+            parsed = _parse_json(resp.text)
+        except Exception:
+            resp, parsed = None, {}
+        if parsed:
+            break
+        if attempt < retries:
+            sleeper(retry_delay * attempt)   # linear backoff: 4s, 8s, ...
+    if not parsed:
+        # Deterministic ranking stands; the weekly run doesn't fail over a missing LLM pass.
+        return {"assessments": {}, "usage": resp, "prompt": prompt}
 
-    parsed = _parse_json(resp.text)
     assessments: dict = {}
     for sym, v in (parsed or {}).items():
         cleaned = _clean(sym, v)

@@ -36,10 +36,33 @@ def test_deep_dive_bad_verdict_defaults_to_watch():
 
 
 def test_deep_dive_survives_llm_failure():
+    calls = {"n": 0}
+
     class _Boom(MockLLM):
         def complete(self, system, prompt, max_tokens=1500):
+            calls["n"] += 1
             raise TimeoutError("down")
-    assert deep_dive(_Boom(), [_CAND])["assessments"] == {}          # degrades, no crash
+    # Degrades to empty after retrying (no crash); sleep stubbed so the test doesn't wait.
+    out = deep_dive(_Boom(), [_CAND], retries=3, sleep=lambda _: None)
+    assert out["assessments"] == {} and calls["n"] == 3
+
+
+def test_deep_dive_retries_then_succeeds():
+    _CANNED = '{"X": {"verdict": "watch", "conviction": "low", "thesis": "ok", "exit_if": []}}'
+
+    class _Flaky(MockLLM):
+        def __init__(self):
+            super().__init__(_CANNED)
+            self.n = 0
+
+        def complete(self, system, prompt, max_tokens=1500):
+            self.n += 1
+            if self.n == 1:
+                raise TimeoutError("blip")
+            return super().complete(system, prompt, max_tokens)
+
+    out = deep_dive(_Flaky(), [{"symbol": "X", "data": {}}], retries=3, sleep=lambda _: None)
+    assert out["assessments"]["X"]["verdict"] == "watch"    # recovered on the 2nd attempt
 
 
 # --- wiring into the weekly run ---------------------------------------------------------------
