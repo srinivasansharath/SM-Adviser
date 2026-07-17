@@ -89,6 +89,30 @@ def test_get_universe_paginates_full_pages():
     assert calls["n"] == 2
 
 
+def _page_of(syms):
+    body = "".join(
+        f'<tr><td>1.</td><td><a href="/company/{s}/">{s}</a></td>'
+        f'<td>10</td><td>15</td><td>500</td><td>0</td><td>20</td><td>18</td><td>11</td><td>0</td></tr>'
+        for s in syms)
+    return _PAGE.replace(_PAGE[_PAGE.find("<tbody>") + 7:_PAGE.find("</tbody>")], body)
+
+
+def test_get_universe_unions_band_screens_and_dedups():
+    # Two market-cap-band screens; second overlaps on "B" -> unioned, B kept once.
+    class MultiClient:
+        def get(self, url, params=None):
+            if "band1" in url:
+                return _FakeResp(_page_of(["A", "B"]))
+            if "band2" in url:
+                return _FakeResp(_page_of(["B", "C", "D"]))
+            return _FakeResp('<table class="data-table"></table>')
+
+    sb = ScreenerBulk(["https://www.screener.in/screens/1/band1/",
+                       "https://www.screener.in/screens/2/band2/"], client=MultiClient())
+    uni = sb.get_universe()
+    assert [r["symbol"] for r in uni] == ["A", "B", "C", "D"]   # both bands, B not duplicated
+
+
 def test_norm_header():
     assert ScreenerBulk._norm_header("Mar CapRs.Cr.") == "Mar Cap"
     assert ScreenerBulk._norm_header("Div Yld%") == "Div Yld"

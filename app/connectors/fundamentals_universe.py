@@ -16,6 +16,7 @@ Each row is returned as {"symbol", plus any mapped ratio fields}. All fields bes
 from __future__ import annotations
 
 import re
+import time
 from abc import ABC, abstractmethod
 
 
@@ -84,11 +85,15 @@ class ScreenerBulk(UniverseConnector):
         "Pledged percentage": "promoter_pledge",
     }
 
-    def __init__(self, screen_url: str, max_pages: int = 100, client=None):
-        # screen_url is the public screen page, e.g. https://www.screener.in/screens/357649/my-screen/
-        self._url = screen_url.split("?")[0].rstrip("/") + "/"
+    def __init__(self, screen_urls, max_pages: int = 100, client=None, page_delay: float = 0.0):
+        # One or more PUBLIC screen URLs. Anonymous access is rate-limited per IP (~20 quick pages
+        # then throttled), so to cover the universe past the ~500-row limit you split it into
+        # non-overlapping market-cap BAND screens; this fetches each (throttled) and unions them.
+        urls = [screen_urls] if isinstance(screen_urls, str) else list(screen_urls)
+        self._urls = [u.split("?")[0].rstrip("/") + "/" for u in urls]
         self._max_pages = max_pages
-        self._client = client  # injectable for tests
+        self._client = client       # injectable for tests
+        self._page_delay = page_delay  # seconds between requests, to stay under the rate limit
 
     @staticmethod
     def _num(text: str) -> float | None:
@@ -140,6 +145,32 @@ class ScreenerBulk(UniverseConnector):
             rows.append(row)
         return rows
 
+    def _fetch_screen(self, client, url: str, seen: set) -> list[dict]:
+        """Paginate ONE screen, appending rows whose symbol isn't already in `seen` (mutated)."""
+        out: list[dict] = []
+        prev_page: tuple | None = None
+        for page in range(1, self._max_pages + 1):
+            try:
+                r = client.get(url, params={"page": page})
+                rows = self._parse_page(r.text)
+            except Exception:
+                break  # transient/rate-limited page — stop this screen, keep what we have
+            if not rows:
+                break  # past the last page (or rate-limited to empty)
+            page_syms = tuple(row["symbol"] for row in rows)
+            if page_syms == prev_page:
+                break  # screener repeated the last page past the end — guard against a loop
+            prev_page = page_syms
+            for row in rows:
+                if row["symbol"] not in seen:
+                    seen.add(row["symbol"])
+                    out.append(row)
+            if len(rows) < 25:
+                break  # short page = last page
+            if self._page_delay:
+                time.sleep(self._page_delay)
+        return out
+
     def get_universe(self) -> list[dict]:  # pragma: no cover - network
         try:
             import httpx
@@ -147,37 +178,27 @@ class ScreenerBulk(UniverseConnector):
             return []
         close = self._client is None
         client = self._client or httpx.Client(timeout=25, headers=self._HDRS, follow_redirects=True)
-        out: list[dict] = []
         seen: set[str] = set()
+        out: list[dict] = []
         try:
-            for page in range(1, self._max_pages + 1):
-                try:
-                    r = client.get(self._url, params={"page": page})
-                    rows = self._parse_page(r.text)
-                except Exception:
-                    break  # transient page failure — stop, keep what we have (fail soft)
-                if not rows:
-                    break  # past the last page
-                fresh = [row for row in rows if row["symbol"] not in seen]
-                if not fresh:
-                    break  # screener repeats the last page past the end — guard against a loop
-                for row in fresh:
-                    seen.add(row["symbol"])
-                out.extend(fresh)
-                if len(rows) < 25:
-                    break  # short page = last page
+            for url in self._urls:
+                out.extend(self._fetch_screen(client, url, seen))
+                if self._page_delay:
+                    time.sleep(self._page_delay)  # pause between band screens too
         finally:
             if close:
                 client.close()
         return out
 
 
-def get_universe_source(name: str = "screener_bulk", screen_url: str | None = None) -> UniverseConnector:
+def get_universe_source(name: str = "screener_bulk", screen_url=None, screen_urls=None,
+                        page_delay: float = 0.0) -> UniverseConnector:
     name = (name or "screener_bulk").lower()
     if name == "mock":
         return MockUniverse()
     if name == "screener_bulk":
-        if not screen_url:
-            raise ValueError("screener_bulk needs a public screen URL (config: screening.screen_url)")
-        return ScreenerBulk(screen_url)
+        urls = screen_urls or screen_url
+        if not urls:
+            raise ValueError("screener_bulk needs screen URL(s) (config: screening.screen_urls)")
+        return ScreenerBulk(urls, page_delay=page_delay)
     raise ValueError(f"Unknown universe source: {name!r} (expected 'screener_bulk' or 'mock')")

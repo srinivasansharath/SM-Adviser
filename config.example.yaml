@@ -72,8 +72,16 @@ data_sources:
 
 # New-stock screener (Phase 6) — the weekly buy-candidate funnel.
 screening:
-  # A PUBLIC screener.in screen URL carrying your universe pre-filter (e.g. Market Cap > 100).
-  screen_url: "https://www.screener.in/screens/XXXXXX/your-screen/"
+  # PUBLIC screener.in screens carrying your universe. Anonymous access is rate-limited (~500
+  # rows/screen), so split the universe into non-overlapping MARKET-CAP BANDS (each < 500 rows,
+  # verify the "N results" count on each) and list them here — they're fetched (throttled) + unioned.
+  screen_urls:
+    - "https://www.screener.in/screens/AAAA/mcap-gt-2000cr/"    # Market Capitalization > 2000
+    - "https://www.screener.in/screens/BBBB/mcap-800-2000cr/"   # 800 < Market Capitalization < 2000
+    - "https://www.screener.in/screens/CCCC/mcap-400-800cr/"    # 400 < Market Capitalization < 800
+    - "https://www.screener.in/screens/DDDD/mcap-100-400cr/"    # 100 < Market Capitalization < 400
+  # screen_url: "https://www.screener.in/screens/XXXX/one-screen/"   # single-screen (legacy) still works
+  page_delay_sec: 2.0    # delay between requests, to stay under screener's anonymous rate limit
   top_deep: 150        # how many coarse-ranked names get a per-stock deep fetch
   per_sector: 3        # top-N candidates featured per sector
   sectors: 4           # number of sectors to feature (sector-diversified table = per_sector x sectors)

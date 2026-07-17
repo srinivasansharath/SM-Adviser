@@ -170,12 +170,14 @@ def main() -> None:
     settings = get_settings()
     config = load_yaml_config(settings.portfolio_config)
     cfg = _screening_cfg(config)
-    screen_url = cfg.get("screen_url")
-    if not screen_url:
-        raise SystemExit("Set screening.screen_url in config.yaml (a public screener.in screen URL)")
+    # screen_urls (list of market-cap-band screens) is preferred; screen_url (single) still works.
+    screen_urls = cfg.get("screen_urls") or cfg.get("screen_url")
+    if not screen_urls:
+        raise SystemExit("Set screening.screen_urls in config.yaml (public screener.in screen URLs)")
 
     summary = run(
-        universe=get_universe_source("screener_bulk", screen_url=screen_url),
+        universe=get_universe_source("screener_bulk", screen_urls=screen_urls,
+                                     page_delay=float(cfg.get("page_delay_sec", 2.0))),
         fundamentals=get_fundamentals("screener"),
         market_data=get_market_data("yfinance"),
         config=config,
