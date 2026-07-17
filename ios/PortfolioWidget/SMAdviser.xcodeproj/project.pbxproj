@@ -14,14 +14,17 @@
 		3A8335AF513006DDC074918E /* PortfolioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D0CB050AF84EFAF3193DAB0 /* PortfolioService.swift */; };
 		4851D8C3B19CE02D13A245DC /* ThesisEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9D480A7D2DE68CA34C078AB /* ThesisEditorView.swift */; };
 		4969FC5A3D04E453BDE575A3 /* StockDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005CD0C9D3CAAD59DB2A0BD9 /* StockDetailView.swift */; };
+		4BF0E79ABF7AD59697347F86 /* HealthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A5165C91C14AA0D8A5087F5 /* HealthView.swift */; };
 		511F03699104EE0EC2EA20F5 /* PortfolioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D0CB050AF84EFAF3193DAB0 /* PortfolioService.swift */; };
 		5A21912D49DABE888817049D /* DemoStock.html in Resources */ = {isa = PBXBuildFile; fileRef = 5FB4E7B631B9E72C35867CF4 /* DemoStock.html */; };
 		68C67547D5A5026E3D43797F /* AppConfig.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB69A6D57F6E555183291122 /* AppConfig.swift */; };
 		775E0E061E2293B13E0F8374 /* CyclePeriodIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E1F33F6AAACD9A25DFC4F30 /* CyclePeriodIntent.swift */; };
+		82C0D29F75834F508E1C4CD5 /* StatusModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3389CDFC84DD9A8C5267EC3B /* StatusModels.swift */; };
 		83E13A1D6F1BB6E40B254DFB /* WidgetModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01843D66CBEF18300C43A033 /* WidgetModels.swift */; };
 		84E55C1BF8168325AD9AB085 /* WidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC0B4B7BE865B8CDB01A81A6 /* WidgetViews.swift */; };
 		87F56D0538CA795D52CE5053 /* CandidateModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF0A0C34F996D1FB7B6BD4BF /* CandidateModels.swift */; };
 		92612598AB42BCCC9988F75D /* SetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26301F47DD22AF4766C1EDA1 /* SetupView.swift */; };
+		A8F5BF24742FACE7CF2629A2 /* StatusModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3389CDFC84DD9A8C5267EC3B /* StatusModels.swift */; };
 		AAA49AB296BA731D92456BFA /* Styles.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4168E4C6ECE1003CDE13C52 /* Styles.swift */; };
 		B424590060DF2193E967BDB8 /* PortfolioWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6402602DF58BAABA60DF7341 /* PortfolioWidget.swift */; };
 		B544A577920F19676503EF54 /* MarketClock.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7E602426CE5496F83F115FD8 /* MarketClock.swift */; };
@@ -68,12 +71,14 @@
 		111C0E2C60088035A32B6193 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		26301F47DD22AF4766C1EDA1 /* SetupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetupView.swift; sourceTree = "<group>"; };
 		2AED2D31C303A1E635F9CDC4 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		3389CDFC84DD9A8C5267EC3B /* StatusModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StatusModels.swift; sourceTree = "<group>"; };
 		3E1F33F6AAACD9A25DFC4F30 /* CyclePeriodIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CyclePeriodIntent.swift; sourceTree = "<group>"; };
 		415632F983E54D9FDBF3096B /* SMAdviser.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = SMAdviser.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		5FB4E7B631B9E72C35867CF4 /* DemoStock.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = DemoStock.html; sourceTree = "<group>"; };
 		6402602DF58BAABA60DF7341 /* PortfolioWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortfolioWidget.swift; sourceTree = "<group>"; };
 		6C899FC39DFD87F0DC3E00BF /* DemoCandidates.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; path = DemoCandidates.html; sourceTree = "<group>"; };
 		7A3697EE216D53455284A739 /* SMAdviser.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = SMAdviser.entitlements; sourceTree = "<group>"; };
+		7A5165C91C14AA0D8A5087F5 /* HealthView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthView.swift; sourceTree = "<group>"; };
 		7D0CB050AF84EFAF3193DAB0 /* PortfolioService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PortfolioService.swift; sourceTree = "<group>"; };
 		7E602426CE5496F83F115FD8 /* MarketClock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketClock.swift; sourceTree = "<group>"; };
 		840C4638B368155C72E322EB /* SMAdviserApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SMAdviserApp.swift; sourceTree = "<group>"; };
@@ -107,6 +112,7 @@
 				7E602426CE5496F83F115FD8 /* MarketClock.swift */,
 				C767AB98BCA0BE48448B1A80 /* Period.swift */,
 				7D0CB050AF84EFAF3193DAB0 /* PortfolioService.swift */,
+				3389CDFC84DD9A8C5267EC3B /* StatusModels.swift */,
 				F4168E4C6ECE1003CDE13C52 /* Styles.swift */,
 				F2D2C19454644C4CED3E73DB /* ThesisModels.swift */,
 				01843D66CBEF18300C43A033 /* WidgetModels.swift */,
@@ -133,6 +139,7 @@
 				111C0E2C60088035A32B6193 /* ContentView.swift */,
 				6C899FC39DFD87F0DC3E00BF /* DemoCandidates.html */,
 				5FB4E7B631B9E72C35867CF4 /* DemoStock.html */,
+				7A5165C91C14AA0D8A5087F5 /* HealthView.swift */,
 				2AED2D31C303A1E635F9CDC4 /* Info.plist */,
 				26301F47DD22AF4766C1EDA1 /* SetupView.swift */,
 				7A3697EE216D53455284A739 /* SMAdviser.entitlements */,
@@ -257,6 +264,7 @@
 				FA39154D5DDC486FCF2DBC5B /* Period.swift in Sources */,
 				3A8335AF513006DDC074918E /* PortfolioService.swift in Sources */,
 				B424590060DF2193E967BDB8 /* PortfolioWidget.swift in Sources */,
+				82C0D29F75834F508E1C4CD5 /* StatusModels.swift in Sources */,
 				AAA49AB296BA731D92456BFA /* Styles.swift in Sources */,
 				BB2F0085B5B1D752B4AAC01F /* ThesisModels.swift in Sources */,
 				83E13A1D6F1BB6E40B254DFB /* WidgetModels.swift in Sources */,
@@ -271,11 +279,13 @@
 				68C67547D5A5026E3D43797F /* AppConfig.swift in Sources */,
 				0830A4E3CF3D190ECAE95AAF /* CandidateModels.swift in Sources */,
 				C88BF6220626DABAACF10717 /* ContentView.swift in Sources */,
+				4BF0E79ABF7AD59697347F86 /* HealthView.swift in Sources */,
 				B544A577920F19676503EF54 /* MarketClock.swift in Sources */,
 				2FF2ABEA4A408D5DF3A88CFA /* Period.swift in Sources */,
 				511F03699104EE0EC2EA20F5 /* PortfolioService.swift in Sources */,
 				39DE7057429466AE3E1BBF76 /* SMAdviserApp.swift in Sources */,
 				92612598AB42BCCC9988F75D /* SetupView.swift in Sources */,
+				A8F5BF24742FACE7CF2629A2 /* StatusModels.swift in Sources */,
 				4969FC5A3D04E453BDE575A3 /* StockDetailView.swift in Sources */,
 				F341E6B24E92735512FC1A49 /* Styles.swift in Sources */,
 				4851D8C3B19CE02D13A245DC /* ThesisEditorView.swift in Sources */,

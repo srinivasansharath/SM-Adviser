@@ -143,6 +143,11 @@ struct DashboardView: View {
                 } label: {
                     Label("Full report (view / share)", systemImage: "doc.text")
                 }
+                NavigationLink {
+                    HealthView()
+                } label: {
+                    Label("System health", systemImage: "waveform.path.ecg")
+                }
                 Button { Task { await load() } } label: { Label("Refresh now", systemImage: "arrow.clockwise") }
                 Button { WidgetCenter.shared.reloadAllTimelines() } label: {
                     Label("Reload home-screen widgets", systemImage: "square.grid.2x2")

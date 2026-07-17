@@ -77,6 +77,7 @@ enum SettingsStore {
     static var thesesURL: URL? { load().flatMap { URL(string: $0.baseURL + "/theses") } }
     static var candidatesURL: URL? { load().flatMap { URL(string: $0.baseURL + "/candidates") } }
     static var candidatesJSONURL: URL? { load().flatMap { URL(string: $0.baseURL + "/candidates.json") } }
+    static var statusURL: URL? { load().flatMap { URL(string: $0.baseURL + "/status") } }
 
     static func thesisURL(_ symbol: String) -> URL? {
         guard let base = load()?.baseURL else { return nil }

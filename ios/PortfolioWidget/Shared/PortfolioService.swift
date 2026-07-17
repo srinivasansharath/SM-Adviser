@@ -61,6 +61,17 @@ enum PortfolioService {
         return d.candidates
     }
 
+    /// Operational health (GET /status): both jobs' external-API status, freshness, LLM spend.
+    static func fetchStatus() async -> StatusData? {
+        if SettingsStore.isDemo { return StatusData.sample }
+        guard let url = SettingsStore.statusURL else { return nil }
+        var req = URLRequest(url: url); req.timeoutInterval = 15
+        authorize(&req)
+        guard let (data, resp) = try? await URLSession.shared.data(for: req),
+              (resp as? HTTPURLResponse)?.statusCode == 200 else { return nil }
+        return try? JSONDecoder.snake.decode(StatusData.self, from: data)
+    }
+
     /// Fetch /meta (capabilities + version) and cache the advertised features. Best-effort.
     @discardableResult
     static func refreshMeta() async -> ServerMeta? {
