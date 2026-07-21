@@ -21,7 +21,9 @@ from sqlalchemy.orm import sessionmaker
 from ..analytics.screening import (
     coarse_score,
     diversified_featured,
+    high_low_ratio,
     median_daily_value_cr,
+    price_history_days,
     score_candidate,
 )
 from ..config import get_settings, load_yaml_config
@@ -123,18 +125,23 @@ def run(
             deep = fundamentals.get_fundamentals(slug)
         except Exception:
             deep = {}
-        liq = None
+        liq = hist_days = hl_ratio = None
         if market_data is not None:
             # Screener uses a BSE scrip code as the slug for some names (all digits) -> price via BSE
             # (.BO); otherwise it's an NSE symbol. Without this those names get no liquidity reading
             # and slip past the illiquidity gate.
             exch = "BSE" if str(slug).isdigit() else row.get("exchange", "NSE")
             try:
-                candles = market_data.get_daily_candles(slug, 40, exchange=exch)
+                # ~260 sessions (1y): enough to date the listing and measure the 6-month range,
+                # while liquidity still uses only the last 30.
+                candles = market_data.get_daily_candles(slug, 260, exchange=exch)
                 liq = median_daily_value_cr(candles)
+                hist_days = price_history_days(candles)
+                hl_ratio = high_low_ratio(candles)
             except Exception:
-                liq = None
-        merged = {**row, **deep, "median_daily_value_cr": liq}
+                liq = hist_days = hl_ratio = None
+        merged = {**row, **deep, "median_daily_value_cr": liq,
+                  "price_history_days": hist_days, "high_low_ratio_6m": hl_ratio}
         result = score_candidate(merged, config)
         result["market_cap"] = row.get("market_cap")
         result["data"] = merged  # keep the raw ratios for audit

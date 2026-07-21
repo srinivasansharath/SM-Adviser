@@ -30,6 +30,31 @@ def median_daily_value_cr(candles: list[dict] | None, lookback: int = 30) -> flo
     return round(statistics.median(vals) / 1e7, 2) if vals else None
 
 
+def price_history_days(candles: list[dict] | None) -> int | None:
+    """How many traded sessions we actually have — the honest proxy for listing age. A name with
+    fewer than ~250 has no verifiable public track record, whatever multi-year figures a data
+    provider reports from its pre-IPO accounts."""
+    return len(candles) if candles else None
+
+
+def high_low_ratio(candles: list[dict] | None, lookback: int = 126) -> float | None:
+    """6-month high/low ratio (≈126 sessions). 2.0 means the price doubled off its low — exactly the
+    '100% high-low variation' the exchanges flag. None when candles lack usable highs/lows."""
+    window = (candles or [])[-lookback:]
+    highs = [c["high"] for c in window if c.get("high")]
+    lows = [c["low"] for c in window if c.get("low")]
+    if not highs or not lows:
+        return None
+    lo = min(lows)
+    return round(max(highs) / lo, 2) if lo > 0 else None
+
+
+def _is_recent_listing(data: dict, cfg: dict | None = None) -> bool:
+    c = {**_DEFAULTS, **((cfg or {}).get("screening") or {})}
+    hist = data.get("price_history_days")
+    return hist is not None and hist < c["min_history_days"]
+
+
 # Long-term mandate: quality + growth + DURABILITY dominate; valuation/safety/liquidity shape it.
 _WEIGHTS = {"quality": 0.24, "growth": 0.20, "durability": 0.20,
             "valuation": 0.14, "safety": 0.14, "liquidity": 0.08}
@@ -41,6 +66,12 @@ _DEFAULTS = {
     "compounder_roe": 15.0,      # consistent ROE bar for the Compounder bucket
     "garp_growth": 15.0,         # 5y profit CAGR bar for GARP
     "garp_peg_max": 1.5,         # PEG ceiling for GARP
+    # --- price-risk / low-base guards (a recent listing's pre-IPO CAGRs distort everything) ---
+    "min_history_days": 250,     # fewer traded sessions than this -> treat as a RECENT LISTING
+    "peg_growth_cap": 40.0,      # cap the PEG growth denominator; a 158% low-base CAGR isn't durable
+    "pe_rich": 50.0,             # absolute richness: caution + valuation-score ceiling
+    "valuation_cap_when_rich": 55.0,  # a rich multiple can't earn top valuation marks
+    "hl_ratio_max": 2.0,         # 6-month high/low above this = 100%+ swing (exchange caution rule)
 }
 
 
@@ -81,12 +112,18 @@ def is_financial(data: dict) -> bool:
         and data.get("roe") is not None
 
 
-def peg(data: dict) -> float | None:
-    """P/E to 5y-profit-growth. None when P/E missing or growth non-positive (PEG undefined)."""
+def peg(data: dict, cfg: dict | None = None) -> float | None:
+    """P/E to 5y-profit-growth, with the growth denominator CAPPED.
+
+    Uncapped, a low-base CAGR (e.g. a recent listing compounding 158% off near-zero pre-IPO profit)
+    drives PEG toward zero and scores valuation a perfect 100 at almost any P/E. Capping the
+    denominator keeps PEG meaningful: exceptional growth still helps, but can't make a name look free.
+    """
+    c = {**_DEFAULTS, **((cfg or {}).get("screening") or {})}
     pe, g = data.get("pe"), data.get("profit_cagr_5y")
     if pe is None or pe <= 0 or g is None or g <= 0:
         return None
-    return round(pe / g, 2)
+    return round(pe / min(g, c["peg_growth_cap"]), 2)
 
 
 def score_quality(data: dict) -> float | None:
@@ -112,11 +149,15 @@ def score_growth(data: dict) -> float | None:
     return _avg(base, base, recent) if recent is not None else base  # base weighted 2x
 
 
-def score_durability(data: dict) -> float | None:
+def score_durability(data: dict, cfg: dict | None = None) -> float | None:
     """Track record + CONSISTENCY — the dimension that separates a durable compounder from a one-good-
     year fluke. Rewards a high worst-horizon ROE and a tight ROE spread across years, plus steady
     positive 5y growth. Crucially, a name with NO multi-year history scores low (25) rather than
     being renormalised away — no track record is demoted, not excused."""
+    # A recent listing has no VERIFIABLE public record — floor it regardless of the multi-year
+    # figures the provider reports (those are pre-IPO accounts, not a track record we can trust).
+    if _is_recent_listing(data, cfg):
+        return 25.0
     roe_5y, roe_3y, roe_now = data.get("roe_5y"), data.get("roe_3y"), data.get("roe")
     scagr, pcagr = data.get("sales_cagr_5y"), data.get("profit_cagr_5y")
     if all(v is None for v in (roe_5y, roe_3y, scagr, pcagr)):
@@ -131,19 +172,28 @@ def score_durability(data: dict) -> float | None:
     return _avg(*parts)
 
 
-def score_valuation(data: dict) -> float | None:
-    """PEG-led (growth-adjusted); falls back to an absolute P/E band when PEG is undefined."""
-    p = peg(data)
-    if p is not None:
-        return _scale(p, 2.5, 0.5)  # PEG 0.5 -> 100, 2.5 -> 0
-    return _scale(data.get("pe"), 60, 10)  # loss-makers / no-growth: cheaper abs P/E scores higher
+def score_valuation(data: dict, cfg: dict | None = None) -> float | None:
+    """PEG-led (growth-adjusted, capped denominator); absolute P/E band when PEG is undefined.
+
+    An absolute ceiling applies on top: however fast it's growing, a rich multiple can't earn top
+    valuation marks — growth may justify a premium, but it shouldn't hide one.
+    """
+    c = {**_DEFAULTS, **((cfg or {}).get("screening") or {})}
+    p = peg(data, cfg)
+    score = _scale(p, 2.5, 0.5) if p is not None else _scale(data.get("pe"), 60, 10)
+    pe = data.get("pe")
+    if score is not None and pe is not None and pe > c["pe_rich"]:
+        score = min(score, c["valuation_cap_when_rich"])
+    return score
 
 
-def score_safety(data: dict) -> float | None:
-    """Low leverage + low pledge. Leverage skipped for financials (inherently geared)."""
+def score_safety(data: dict, cfg: dict | None = None) -> float | None:
+    """Low leverage + low pledge + PRICE STABILITY. Leverage skipped for financials (inherently
+    geared). A violent 6-month range is a real risk to the holder, so it belongs in safety."""
     pledge = _scale(data.get("promoter_pledge"), 50, 0)
     de = None if is_financial(data) else _scale(data.get("debt_to_equity"), 2.0, 0.0)
-    return _avg(de, pledge)
+    vol = _scale(data.get("high_low_ratio_6m"), 3.0, 1.2)  # 1.2x -> 100, 3.0x -> 0
+    return _avg(de, pledge, vol)
 
 
 def score_liquidity(data: dict) -> float | None:
@@ -190,11 +240,13 @@ def buckets(data: dict, cfg: dict | None = None) -> list[str]:
     pledge = data.get("promoter_pledge") or 0
     roes = [v for v in (roe5, roe3, roe_now) if v is not None]
 
-    # Compounder: a real, consistent track record — REQUIRES 5y ROE (no-history names can't qualify).
-    if roe5 is not None and roe5 >= c["compounder_roe"] and (roe_now or 0) >= c["compounder_roe"] \
+    # Compounder: a real, consistent track record — REQUIRES 5y ROE AND enough traded history.
+    # A recent listing can never be a Compounder, however flattering its pre-IPO accounts look.
+    if not _is_recent_listing(data, cfg) \
+            and roe5 is not None and roe5 >= c["compounder_roe"] and (roe_now or 0) >= c["compounder_roe"] \
             and (pcagr or 0) >= 8 and pledge <= 10 and (not roes or min(roes) >= 10):
         out.append("Compounder")
-    p = peg(data)
+    p = peg(data, cfg)
     if (pcagr or 0) >= c["garp_growth"] and p is not None and p <= c["garp_peg_max"]:
         out.append("GARP")
     # Tailwind: recent acceleration MEANINGFULLY above the 5y trend, on a company with real quality —
@@ -238,14 +290,35 @@ def diversified_featured(scored: list[dict], per_sector: int = 3, sectors: int =
     return featured
 
 
+def cautions(data: dict, cfg: dict | None = None) -> list[str]:
+    """NON-excluding warnings surfaced beside a candidate — the same idea as an exchange's
+    'regulatory caution' notice. These don't remove a name from the shortlist (that's `red_flags`);
+    they make the risk explicit so it can't hide behind a high composite."""
+    c = {**_DEFAULTS, **((cfg or {}).get("screening") or {})}
+    out: list[str] = []
+    hist = data.get("price_history_days")
+    if _is_recent_listing(data, cfg):
+        out.append(f"recent listing: only {hist} traded sessions — no verifiable public track record")
+    pe = data.get("pe")
+    if pe is not None and pe > c["pe_rich"]:
+        out.append(f"rich valuation: P/E {pe:.0f} above {c['pe_rich']:.0f}")
+    hl = data.get("high_low_ratio_6m")
+    if hl is not None and hl > c["hl_ratio_max"]:
+        out.append(f"volatile: 6-month high/low {hl:.1f}x (>{c['hl_ratio_max']:.1f}x = 100%+ swing)")
+    g = data.get("profit_cagr_5y")
+    if g is not None and g > c["peg_growth_cap"]:
+        out.append(f"low-base growth: {g:.0f}% 5y CAGR capped at {c['peg_growth_cap']:.0f}% for PEG")
+    return out
+
+
 def score_candidate(data: dict, cfg: dict | None = None) -> dict:
-    """Full Stage-2 assessment: sub-scores, composite, buckets, red-flag gate."""
+    """Full Stage-2 assessment: sub-scores, composite, buckets, red-flag gate, cautions."""
     subs = {
         "quality": score_quality(data),
         "growth": score_growth(data),
-        "durability": score_durability(data),
-        "valuation": score_valuation(data),
-        "safety": score_safety(data),
+        "durability": score_durability(data, cfg),
+        "valuation": score_valuation(data, cfg),
+        "safety": score_safety(data, cfg),
         "liquidity": score_liquidity(data),
     }
     flags = red_flags(data, cfg)
@@ -256,6 +329,7 @@ def score_candidate(data: dict, cfg: dict | None = None) -> dict:
         "buckets": buckets(data, cfg),
         "red_flags": flags,
         "excluded": bool(flags),
-        "peg": peg(data),
+        "cautions": cautions(data, cfg),
+        "peg": peg(data, cfg),
         "is_financial": is_financial(data),
     }

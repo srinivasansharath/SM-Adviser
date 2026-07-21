@@ -150,3 +150,72 @@ def test_coarse_score_orders_quality_growth():
     weak = coarse_score({"roce": 6, "profit_growth_qtr": -10, "sales_growth_qtr": -5, "pe": 90})
     assert strong > weak
     assert coarse_score({}) == 0.0                         # all-missing -> 0, never crashes
+
+
+# --- price-risk / low-base guards (EMMVEE regression: pre-IPO CAGRs defeated three guards) ---
+
+def _candles(n, lo=100.0, hi=100.0):
+    """n sessions; last 126 span lo..hi so high_low_ratio is controllable."""
+    out = []
+    for i in range(n):
+        px = lo if i % 2 else hi
+        out.append({"date": f"d{i}", "open": px, "high": px, "low": px, "close": px, "volume": 100000})
+    return out
+
+
+def test_price_helpers():
+    from app.analytics.screening import high_low_ratio, price_history_days
+    assert price_history_days(_candles(30)) == 30
+    assert price_history_days([]) is None
+    assert high_low_ratio(_candles(130, lo=50.0, hi=100.0)) == 2.0
+    assert high_low_ratio(None) is None
+
+
+def test_recent_listing_floors_durability_despite_claimed_history():
+    """The EMMVEE case: provider reports 5y ROE from pre-IPO accounts, but only ~120 sessions
+    of real trading exist. Durability must NOT reward that."""
+    from app.analytics.screening import score_durability
+    data = {"roe_5y": 51.0, "roe_3y": 56.0, "roe": 51.1,
+            "sales_cagr_5y": 64.0, "profit_cagr_5y": 158.0}
+    assert score_durability(data) > 90                      # old behaviour, long history assumed
+    assert score_durability({**data, "price_history_days": 120}) == 25.0   # recent listing -> floored
+
+
+def test_recent_listing_cannot_be_a_compounder():
+    from app.analytics.screening import buckets
+    data = {"roe_5y": 51.0, "roe_3y": 56.0, "roe": 51.1, "profit_cagr_5y": 158.0, "promoter_pledge": 0.0}
+    assert "Compounder" in buckets(data)
+    assert "Compounder" not in buckets({**data, "price_history_days": 120})
+
+
+def test_peg_growth_denominator_is_capped():
+    """A 158% low-base CAGR must not make a rich multiple look free."""
+    from app.analytics.screening import peg, score_valuation
+    data = {"pe": 55.0, "profit_cagr_5y": 158.0}
+    assert peg(data) == round(55.0 / 40.0, 2)               # capped at 40, not 55/158=0.35
+    assert score_valuation(data) <= 55.0                    # and richness caps the score
+
+
+def test_rich_pe_cannot_score_top_valuation():
+    from app.analytics.screening import score_valuation
+    assert score_valuation({"pe": 18.0, "profit_cagr_5y": 30.0}) > 55.0   # sane multiple unaffected
+    assert score_valuation({"pe": 80.0, "profit_cagr_5y": 158.0}) <= 55.0
+
+
+def test_volatility_lowers_safety_and_raises_caution():
+    from app.analytics.screening import cautions, score_safety
+    calm = {"debt_to_equity": 0.1, "promoter_pledge": 0.0, "high_low_ratio_6m": 1.3}
+    wild = {**calm, "high_low_ratio_6m": 2.8}
+    assert score_safety(calm) > score_safety(wild)
+    assert any("volatile" in c for c in cautions(wild))
+    assert not any("volatile" in c for c in cautions(calm))
+
+
+def test_cautions_are_not_exclusions():
+    """Cautions surface risk without silently dropping the name (red_flags do the excluding)."""
+    from app.analytics.screening import score_candidate
+    r = score_candidate({"symbol": "X", "pe": 60.0, "profit_cagr_5y": 158.0,
+                         "price_history_days": 120, "high_low_ratio_6m": 2.5,
+                         "median_daily_value_cr": 5.0, "debt_to_equity": 0.1, "promoter_pledge": 0.0})
+    assert r["excluded"] is False
+    assert len(r["cautions"]) >= 3
