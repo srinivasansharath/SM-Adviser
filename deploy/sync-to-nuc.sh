@@ -5,6 +5,10 @@
 #
 #   ./deploy/sync-to-nuc.sh            # sync code + config
 #   ./deploy/sync-to-nuc.sh --restart  # sync, then rebuild + restart the API on the NUC
+#
+# SAFETY: --delete once wiped config.yaml off the NUC because that file lived ONLY on the
+# server (it's gitignored, and this Mac never had a copy). Server-side state is now
+# PROTECTED from deletion, and anything deleted/overwritten is kept in .rsync-backup/.
 set -euo pipefail
 
 NUC="${NUC_HOST:-NUC-HadesCanyon-Linux}"
@@ -14,6 +18,14 @@ REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ssh "$NUC" "mkdir -p $DEST"
 
 rsync -az --delete \
+  --backup --backup-dir=".rsync-backup/$(date +%Y%m%d-%H%M%S)" \
+  --filter='P config.yaml' \
+  --filter='P .env' \
+  --filter='P theses.yaml' \
+  --filter='P kite_token.json' \
+  --filter='P data/**' \
+  --filter='P reports_out/**' \
+  --filter='P .rsync-backup/**' \
   --exclude '.git/' \
   --exclude '.venv/' \
   --exclude '__pycache__/' \
