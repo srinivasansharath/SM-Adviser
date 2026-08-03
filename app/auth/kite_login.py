@@ -140,14 +140,41 @@ def fetch_request_token(
             client.close()
 
 
-def exchange_request_token(api_key: str, api_secret: str, request_token: str, kite=None) -> str:
-    """Official ToS-compliant swap: request_token -> access_token via generate_session."""
+def exchange_request_token(
+    api_key: str,
+    api_secret: str,
+    request_token: str,
+    kite=None,
+    *,
+    retries: int = 3,
+    retry_delay: float = 4.0,
+    sleep: Callable[[float], None] | None = None,
+) -> str:
+    """Official ToS-compliant swap: request_token -> access_token via generate_session.
+
+    Zerodha's api.token endpoint intermittently returns a transient 5xx (a 503 here skipped the
+    2026-07-24 run). A 5xx means the request_token wasn't consumed, so the *same* token can be
+    retried; we back off linearly up to `retries` times. `sleep` is injectable for tests.
+    """
     if kite is None:  # pragma: no cover - real SDK path
         from kiteconnect import KiteConnect
 
         kite = KiteConnect(api_key=api_key)
-    session = kite.generate_session(request_token, api_secret=api_secret)
-    return session["access_token"]
+    if sleep is None:
+        sleep = time.sleep
+
+    last: Exception | None = None
+    for attempt in range(1, retries + 1):
+        try:
+            session = kite.generate_session(request_token, api_secret=api_secret)
+            return session["access_token"]
+        except Exception as e:  # transient Kite 5xx / network wobble — back off and retry
+            last = e
+            if attempt < retries:
+                sleep(retry_delay * attempt)  # linear backoff: 4s, 8s, ...
+    raise AutoLoginError(
+        f"token exchange failed after {retries} attempts; last error: {last}"
+    ) from last
 
 
 @dataclass

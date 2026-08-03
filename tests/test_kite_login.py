@@ -59,6 +59,21 @@ class FakeKite:
         return {"access_token": "AT_XYZ"}
 
 
+class FlakyKite:
+    """Raises a transient error (mimics Zerodha's api.token 503) for the first `fail_n` calls,
+    then succeeds — the failure mode that skipped the 2026-07-24 morning run."""
+
+    def __init__(self, fail_n: int):
+        self.fail_n = fail_n
+        self.calls = 0
+
+    def generate_session(self, request_token, api_secret):
+        self.calls += 1
+        if self.calls <= self.fail_n:
+            raise RuntimeError("503 Service Unavailable")
+        return {"access_token": "AT_XYZ"}
+
+
 # --- tests ----------------------------------------------------------------------------
 def test_token_store_roundtrip(tmp_path):
     store = TokenStore(tmp_path / "kite_token.json")
@@ -159,3 +174,20 @@ def test_exchange_request_token():
     at = exchange_request_token("k", "secret", "RT_ABC", kite=kite)
     assert at == "AT_XYZ"
     assert kite.exchanged == ("RT_ABC", "secret")
+
+
+def test_exchange_retries_then_succeeds():
+    # One transient 503, then success — the retry recovers the run (the 2026-07-24 failure mode).
+    kite = FlakyKite(fail_n=1)
+    at = exchange_request_token("k", "secret", "RT_ABC", kite=kite, retries=3, sleep=lambda _: None)
+    assert at == "AT_XYZ"
+    assert kite.calls == 2  # failed once, retried, succeeded
+
+
+def test_exchange_persistent_failure_raises_clear_error():
+    # A persistent outage surfaces as a clear AutoLoginError after exhausting retries.
+    kite = FlakyKite(fail_n=99)
+    with pytest.raises(AutoLoginError) as ei:
+        exchange_request_token("k", "secret", "RT_ABC", kite=kite, retries=2, sleep=lambda _: None)
+    assert "after 2 attempts" in str(ei.value)
+    assert kite.calls == 2
