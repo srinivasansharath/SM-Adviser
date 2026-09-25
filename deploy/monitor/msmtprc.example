@@ -1,11 +1,13 @@
-# Copy to ~/.msmtprc on the NUC, fill in the app password, then: chmod 600 ~/.msmtprc
+# Copy to ~/.msmtprc on the server, fill in the app password, then: chmod 600 ~/.msmtprc
 # Gmail app password: https://myaccount.google.com/apppasswords  (2FA must be on).
 # If sending from a Google Workspace address (e.g. sharath@kreo.in), set from/user to it
 # and generate the app password on that account.
 defaults
 auth           on
 tls            on
-tls_trust_file /etc/ssl/certs/ca-certificates.crt
+# Linux (Debian/Ubuntu): /etc/ssl/certs/ca-certificates.crt
+# macOS (Homebrew msmtp): /etc/ssl/cert.pem
+tls_trust_file /etc/ssl/cert.pem
 logfile        ~/.msmtp.log
 
 account        gmail

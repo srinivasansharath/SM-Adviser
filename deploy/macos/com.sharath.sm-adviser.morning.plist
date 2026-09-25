@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Daily morning orchestrator, Mon-Fri 08:00 IST (set the Mac's tz to Asia/Kolkata).
+     launchd re-fires a StartCalendarInterval job that was missed while the machine was
+     asleep or off — the equivalent of systemd's Persistent=true.
+     Paths are templated; install with ./install-launchd.sh, not by hand. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.sharath.sm-adviser.morning</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>__SMA_REPO__/deploy/macos/sma-job.sh</string>
+    <string>morning-run</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__SMA_REPO__</string>
+
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>8</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Weekday</key><integer>2</integer><key>Hour</key><integer>8</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Weekday</key><integer>3</integer><key>Hour</key><integer>8</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Weekday</key><integer>4</integer><key>Hour</key><integer>8</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Weekday</key><integer>5</integer><key>Hour</key><integer>8</integer><key>Minute</key><integer>0</integer></dict>
+  </array>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>__SMA_HOME__/Library/Logs/sm-adviser/launchd-morning.log</string>
+  <key>StandardErrorPath</key>
+  <string>__SMA_HOME__/Library/Logs/sm-adviser/launchd-morning.log</string>
+
+  <!-- Don't get throttled down: the run does pandas work and ~2k HTTP fetches. -->
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>LowPriorityIO</key>
+  <false/>
+  <key>Nice</key>
+  <integer>0</integer>
+</dict>
+</plist>

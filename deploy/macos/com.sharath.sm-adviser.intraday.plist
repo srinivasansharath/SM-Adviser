@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Intraday price refresh. Fires every 15 min around the clock; sma-job.sh exits in
+     milliseconds outside Mon-Fri 09:00-15:45 IST, and the job itself gates precisely to
+     09:15-15:30. (launchd can't express "every 15 min between 09:00 and 15:45 on weekdays"
+     without ~140 StartCalendarInterval entries, hence the gate in the wrapper.)
+     No failure alert by design — a missed tick is non-critical. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.sharath.sm-adviser.intraday</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>__SMA_REPO__/deploy/macos/sma-job.sh</string>
+    <string>intraday-run</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__SMA_REPO__</string>
+
+  <key>StartInterval</key>
+  <integer>900</integer>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>__SMA_HOME__/Library/Logs/sm-adviser/launchd-intraday.log</string>
+  <key>StandardErrorPath</key>
+  <string>__SMA_HOME__/Library/Logs/sm-adviser/launchd-intraday.log</string>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+</dict>
+</plist>

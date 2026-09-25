@@ -152,6 +152,17 @@ sudo systemctl enable --now sm-adviser-morning.timer sm-adviser-intraday.timer
 - **morning** runs Mon–Fri 08:00 IST (full analysis).
 - **intraday** refreshes live prices every 15 min during market hours.
 
+**On macOS**, systemd doesn't exist — use the launchd agents instead:
+```bash
+sudo systemsetup -settimezone Asia/Kolkata
+./deploy/macos/install-launchd.sh
+```
+That installs the morning, intraday, weekly and watchdog jobs. See `deploy/macos/README.md` for
+the macOS specifics — Colima, why its mount must be writable, where the logs go, and the reboot
+caveat: launchd agents need a login session, so a Mac with **FileVault on cannot come back from a
+power cut unattended** (it waits at the preboot unlock screen). Use `sudo fdesetup authrestart`
+rather than `sudo reboot`, and consider a UPS.
+
 Optional monitoring (failure-only email alerts) is in `deploy/monitor/` — see `deploy/README.md`.
 
 ---

@@ -1,12 +1,16 @@
-# NUC Deployment
+# Deployment on Linux (systemd)
 
-Runs the SM-Adviser backend 24/7 on the Intel NUC (Ubuntu), in Docker, reachable from the
+> **The live server is now the Mac Mini** — see **[`macos/README.md`](macos/README.md)** for its
+> ops, and **[`MIGRATE-TO-MINI.md`](MIGRATE-TO-MINI.md)** for the NUC → mini cutover. This file
+> documents the Linux/systemd path, kept for self-hosting on a NUC, Pi or VM.
+
+Runs the SM-Adviser backend 24/7 on a Linux box (Ubuntu), in Docker, reachable from the
 iPhone widget over Tailscale.
 
 ## Architecture
 
 ```
-                    ┌──────────────── NUC (nuc-ubuntu) ────────────────┐
+                    ┌──────────────── Linux host ─────────────────────┐
  iPhone widget ──►  │  :8787  api (uvicorn)  ──reads──►  reports_out/  │
  (via Tailscale)    │            │                          ▲          │
                     │            └── Postgres (db) ◄──writes─┤          │
@@ -25,13 +29,13 @@ so `reports_out/`, `data/` and `kite_token.json` persist on the host disk.
 
 ## First-time setup
 
-1. **Sync the repo to the NUC** (from the Mac — carries the gitignored `.env`, `config.yaml`,
+1. **Sync the repo to the server** (from the Mac — carries the gitignored `.env`, `config.yaml`,
    `theses.yaml` that aren't on GitHub):
    ```bash
-   ./deploy/sync-to-nuc.sh
+   SMA_HOST=<host> SMA_DEST=/home/<you>/sm-adviser ./deploy/sync-to-server.sh
    ```
 
-2. **On the NUC**, set the `.env` extras the server needs (append if missing):
+2. **On the server**, set the `.env` extras the server needs (append if missing):
    ```
    PORTFOLIO_CONNECTOR=zerodha
    POSTGRES_PASSWORD=<strong-random>
@@ -64,7 +68,7 @@ so `reports_out/`, `data/` and `kite_token.json` persist on the host disk.
 ## Updating
 
 ```bash
-./deploy/sync-to-nuc.sh --restart        # rsync latest code, rebuild + restart the API
+SMA_HOST=<host> ./deploy/sync-to-server.sh --restart   # rsync code, rebuild + restart the API
 ```
 Code is bind-mounted, so most changes need only an API restart; a dependency change needs
 `--build` (which `--restart` does).
@@ -88,9 +92,9 @@ changing a model in `app/storage/models.py`:
 # on the Mac (dev): generate the migration from the model diff, review it, commit it
 alembic revision --autogenerate -m "add X"
 
-# on the NUC: sync, then apply
-./deploy/sync-to-nuc.sh
-ssh NUC-HadesCanyon-Linux 'cd ~/sm-adviser && docker compose --profile job run --rm migrate'
+# on the server: sync, then apply
+SMA_HOST=<host> ./deploy/sync-to-server.sh
+ssh <host> 'cd ~/sm-adviser && docker compose --profile job run --rm migrate'
 ```
 
 `migrate` runs `alembic upgrade head`. Existing rows are preserved (no more drop-and-recreate).

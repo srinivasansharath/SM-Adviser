@@ -27,7 +27,8 @@ scheduled agent + the app), including a "let Claude Code do it" path:
 
 ### → [`SELF_HOSTING.md`](SELF_HOSTING.md)
 
-Ops/deployment details (Docker stack, migrations, systemd timers, monitoring): [`deploy/README.md`](deploy/README.md).
+Ops/deployment details — the live Mac Mini host (Colima + launchd): [`deploy/macos/README.md`](deploy/macos/README.md);
+Linux/systemd: [`deploy/README.md`](deploy/README.md).
 
 ## Quickstart (local dev — no credentials)
 
@@ -78,4 +79,4 @@ tests/          # hermetic tests + mock fixture
 ## Database
 
 - **Local dev / tests:** SQLite, auto-created, no setup.
-- **Server (NUC):** `docker compose up -d` for Postgres, set `DATABASE_URL`, run Alembic migrations.
+- **Server (Mac Mini):** `docker compose up -d` for Postgres, set `DATABASE_URL`, run Alembic migrations.

@@ -3,6 +3,9 @@
 # (state-tracked under STATE_DIR); silent otherwise. Run by sma-watchdog.timer.
 set -uo pipefail   # intentionally no -e: each check handles its own failure
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# launchd (macOS) gives a minimal PATH — docker, colima and msmtp live under Homebrew.
+# Harmless on Linux, where these dirs simply don't exist.
+export PATH="/opt/homebrew/bin:/usr/local/bin:$PATH"
 # shellcheck source=/dev/null
 source "$HERE/alert.env"
 mkdir -p "$STATE_DIR"
@@ -47,7 +50,8 @@ fi
 
 # 4. widget.json freshness (backstop for a silently-stopped daily timer)
 if [ -f "$WIDGET_JSON" ]; then
-  age_h=$(( ( $(date +%s) - $(stat -c %Y "$WIDGET_JSON") ) / 3600 ))
+  mtime="$(stat -f %m "$WIDGET_JSON" 2>/dev/null || stat -c %Y "$WIDGET_JSON" 2>/dev/null)"
+  age_h=$(( ( $(date +%s) - ${mtime:-0} ) / 3600 ))
   if [ "$age_h" -gt "$STALE_HOURS" ]; then
     transition widget_fresh fail "widget.json is ${age_h}h old (> ${STALE_HOURS}h) — the daily run may have stopped"
   else
@@ -57,10 +61,16 @@ else
   transition widget_fresh fail "widget.json missing ($WIDGET_JSON)"
 fi
 
-# 5. Root disk usage
-disk_pct=$(df --output=pcent / 2>/dev/null | tail -1 | tr -dc '0-9')
-if [ "${disk_pct:-0}" -gt "$DISK_PCT_MAX" ]; then
-  transition disk_space fail "Root filesystem ${disk_pct}% full (> ${DISK_PCT_MAX}%)"
+# 5. Disk headroom — measured as absolute free space, not percent-full.
+#    The Mac Mini is a desktop that legitimately stores a large photo library, so sitting at
+#    ~93% full is normal and permanent there. What actually matters is whether Colima's growing
+#    disk image, Postgres and the logs still have room. A percentage threshold would alert
+#    forever on a big disk and stay silent on a small one; free GiB is the signal that scales.
+#    (DISK_PCT_MAX is superseded and no longer read.)
+free_kb=$(df -Pk / 2>/dev/null | awk 'NR==2 {print $4}')
+free_gb=$(( ${free_kb:-0} / 1048576 ))
+if [ "$free_gb" -lt "${DISK_FREE_GB_MIN:-15}" ]; then
+  transition disk_space fail "Only ${free_gb} GiB free on / (floor is ${DISK_FREE_GB_MIN:-15} GiB)"
 else
   transition disk_space ok ""
 fi
@@ -104,9 +114,13 @@ if [ "${#breaks[@]}" -gt 0 ]; then
     echo
     printf '  - %s\n' "${breaks[@]}"
     echo
-    echo "Investigate on the NUC:"
+    echo "Investigate on the server:"
     echo "  cd ~/sm-adviser && docker compose ps && docker compose logs --tail 50 api"
-    echo "  journalctl -u sm-adviser-morning.service -n 50"
+    if command -v journalctl >/dev/null 2>&1; then
+      echo "  journalctl -u sm-adviser-morning.service -n 50"
+    else
+      echo "  tail -50 ~/Library/Logs/sm-adviser/morning-run.log"
+    fi
   } | "$HERE/sma-alert.sh" "SM Adviser ALERT: ${#breaks[@]} issue(s) detected"
 fi
 

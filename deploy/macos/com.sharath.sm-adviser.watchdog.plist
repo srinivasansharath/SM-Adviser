@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Health watchdog every 20 min (plus once at load, ~ the Linux OnBootSec=5min).
+     Emails once when a check breaks and once when it recovers; silent otherwise. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.sharath.sm-adviser.watchdog</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>__SMA_REPO__/deploy/monitor/sma-watchdog.sh</string>
+  </array>
+
+  <key>WorkingDirectory</key>
+  <string>__SMA_REPO__</string>
+
+  <key>StartInterval</key>
+  <integer>1200</integer>
+
+  <key>RunAtLoad</key>
+  <true/>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+  </dict>
+
+  <key>StandardOutPath</key>
+  <string>__SMA_HOME__/Library/Logs/sm-adviser/launchd-watchdog.log</string>
+  <key>StandardErrorPath</key>
+  <string>__SMA_HOME__/Library/Logs/sm-adviser/launchd-watchdog.log</string>
+
+  <key>ProcessType</key>
+  <string>Background</string>
+</dict>
+</plist>

@@ -8,7 +8,9 @@ Exit-Candidate** with reasoning + evidence, and writes a Claude-generated narrat
 places trades** — advisory only. A native iOS app + home-screen widget read the output over HTTPS.
 
 Self-hosted: the user runs the backend on their own machine with their own credentials. To set up
-a fresh server, follow **`SELF_HOSTING.md`**. Deployment/ops details are in **`deploy/README.md`**.
+a fresh server, follow **`SELF_HOSTING.md`**. The **live host is the Mac Mini** (`mini`, Docker via
+Colima, scheduled by launchd) — ops in **`deploy/macos/README.md`**; it replaced an Intel NUC
+(cutover runbook: **`deploy/MIGRATE-TO-MINI.md`**). The Linux/systemd path is **`deploy/README.md`**.
 Design rationale and phase history are in **`BUILD_PLAN.md`**.
 
 ## Architecture (Python 3.12)
@@ -30,7 +32,9 @@ app/
   safety/guardrails.py    # ReadOnlyKite wrapper (blocks orders), bounded-language enforcement
 ios/PortfolioWidget/      # SwiftUI app + WidgetKit extension (XcodeGen project.yml)
 migrations/               # Alembic
-deploy/                   # Dockerfile is at root; systemd units, sync script, monitoring, README
+deploy/                   # Dockerfile is at root; sync script, monitoring, README (Linux/systemd)
+  macos/                  # launchd agents + job wrapper for the live Mac Mini host
+  MIGRATE-TO-MINI.md      # one-time NUC -> Mac Mini cutover runbook
 ```
 Everything is **dependency-injected** (connectors, session factory, run_date) so tests are hermetic.
 
@@ -44,8 +48,12 @@ Optional deps are extras: `connectors, analytics, marketdata, fundamentals, api,
 
 ## Production runtime (Docker)
 `docker-compose.yml` services: **db** (Postgres 16), **api** (uvicorn :8787), and job-profile
-services **morning-run**, **intraday-run**, **migrate** (run via `docker compose --profile job run --rm <svc>`).
-Code is bind-mounted at `/app`, so a code change = restart, not rebuild (deps change = `--build`).
+services **morning-run**, **intraday-run**, **weekly-screen**, **migrate** (run via
+`docker compose --profile job run --rm <svc>`). Code is bind-mounted at `/app`, so a code change =
+restart, not rebuild (deps change = `--build`). On the Mac Mini the Docker daemon is **Colima**, and
+its `$HOME` mount must be **writable** (`--mount "$HOME/sm-adviser:w"`) or every run fails to write
+`reports_out/`. Schedules are **launchd** agents in `deploy/macos/`, all routed through
+`sma-job.sh`; job logs are `~/Library/Logs/sm-adviser/*.log`, not journald.
 
 ## Conventions & gotchas
 - **DB schema:** SQLite (dev/tests) auto-creates via `create_all`; **Postgres is Alembic-managed**.
@@ -57,6 +65,10 @@ Code is bind-mounted at `/app`, so a code change = restart, not rebuild (deps ch
 - **Kite tokens** are single-use, ~2-min, and cached per-day in `kite_token.json`.
 - **order_flow returns 0** from datacenter IPs (NSE anti-bot); harmless, confirmation-only.
 - **The app requires HTTPS** (ATS enforced); serve via Tailscale (`tailscale serve --https=8443 8787`).
+  On macOS this needs the **standalone** Tailscale build — the App Store one has no `serve`.
+- **FileVault is ON on the Mac Mini**, so it cannot boot unattended. Never `sudo reboot` it
+  remotely — use `sudo fdesetup authrestart`, or it strands at the preboot unlock screen with no
+  SSH. Automatic macOS updates are disabled so the OS can't reboot itself.
 - Keep the read-only, no-auto-trading boundary and the "not investment advice" disclaimers intact.
 
 ## Tests must pass before commit
