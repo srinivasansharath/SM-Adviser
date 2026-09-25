@@ -61,7 +61,9 @@ its `$HOME` mount must be **writable** (`--mount "$HOME/sm-adviser:w"`) or every
   then `docker compose --profile job run --rm migrate`. Do NOT hand-`ALTER`.
 - **API route changes** need an API restart to load: `docker compose restart api`.
 - **Secrets** live in `.env` / `theses.yaml` / `config.yaml` / `kite_token.json` — all gitignored.
-  Never print or commit them; never echo a token to stdout.
+  Never print or commit them; never echo a token to stdout. This includes **indirect** leaks:
+  `bash -x`/`set -x` on `deploy/monitor/sma-watchdog.sh` expands its authed `curl` and prints
+  `WIDGET_API_TOKEN` in the trace. Debug those scripts with targeted `echo`s, not shell tracing.
 - **Kite tokens** are single-use, ~2-min, and cached per-day in `kite_token.json`.
 - **order_flow returns 0** from datacenter IPs (NSE anti-bot); harmless, confirmation-only.
 - **The app requires HTTPS** (ATS enforced); serve via Tailscale (`tailscale serve --https=8443 8787`).

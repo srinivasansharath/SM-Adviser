@@ -115,8 +115,12 @@ ssh mini 'cd ~/sm-adviser && docker compose --profile job run --rm migrate'
   whose `tailscaled` sits behind a network system extension needing a click in System Settings
   before anything runs — unusable over SSH. `brew install tailscale` +
   `sudo brew services start tailscale` gives a plain LaunchDaemon that starts at boot. Serve with
-  `sudo /opt/homebrew/bin/tailscale serve --bg --https=8443 8787`. Always use the absolute path
-  under `sudo` — sudo's PATH prefers `/usr/local/bin` over `/opt/homebrew/bin`.
+  `tailscale serve --bg --https=8443 8787` (no sudo needed for `serve` with the brew daemon). Use
+  the absolute path whenever you *do* prefix `sudo` — sudo's PATH prefers `/usr/local/bin`.
+- **You cannot test `serve` from the mini itself.** Serve proxies traffic from *peers*; a
+  self-connection to its own tailnet address on :8443 completes TCP then hangs in the TLS
+  handshake. Check `tailscale serve status` + `curl localhost:8787/health` locally, and do the
+  real HTTPS check from your phone or another tailnet node.
 - **Disk.** The watchdog alerts above 90 % and this is a desktop machine that also holds Photos
   and Documents; Colima's disk image grows as it's used. Keep real headroom.
 - **`docker compose` is a plugin** installed by Homebrew. If `docker compose version` fails,

@@ -349,7 +349,14 @@ printf 'migration test from the mini\n' | ./deploy/monitor/sma-alert.sh 'SM Advi
 
 ---
 
-## Phase 3 — Inherit the tailnet name, cut the phone over
+## Phase 3 — Inherit the tailnet name, cut the phone over ✅ *done 2026-09-25*
+
+Confirmed working: the mini answers as `nuc-hadescanyon.taila98dab.ts.net` with a Let's Encrypt cert
+valid to 24 Dec 2026, and the iOS app + widget refresh against it with **no reconfiguration at all** —
+same URL, same token. The NUC's tailnet IP changed (100.119.98.88 → 100.76.133.106) but nothing
+references the IP, only the MagicDNS name.
+
+`tailscale serve` needed **no sudo** with the Homebrew daemon.
 
 The iOS app stores the server URL + bearer token. Reusing the NUC's MagicDNS name means
 **zero changes on the phone** — no re-auth, no widget re-add.
@@ -365,7 +372,18 @@ The iOS app stores the server URL + bearer token. Reusing the NUC's MagicDNS nam
    sudo tailscale serve --bg --https=8443 8787
    tailscale cert "$(tailscale status --json | python3 -c 'import sys,json;print(json.load(sys.stdin)["Self"]["DNSName"].rstrip("."))')"
    ```
-5. From the phone (on the tailnet) open `https://<old-name>.ts.net:8443/health` in Safari, then
+5. **Verify from a PEER, never from the mini itself.** `tailscale serve` handles traffic from other
+   tailnet nodes; a node connecting to its own tailnet address on the serve port gets a TCP
+   connection that then hangs in the TLS handshake. That is expected, NOT a broken config — don't
+   spend time debugging it (I did). What you *can* check locally:
+   ```bash
+   tailscale serve status     # -> https://<name>:8443 -> proxy http://127.0.0.1:8787
+   curl -fsS localhost:8787/health
+   # provision/inspect the cert explicitly (writes key material — use a temp dir and delete it):
+   D=$(mktemp -d); cd "$D"; tailscale cert <name>; \
+     openssl x509 -in <name>.crt -noout -subject -issuer -dates; cd /; rm -rf "$D"
+   ```
+   Then from the phone (on the tailnet) open `https://<old-name>.ts.net:8443/health` in Safari, and
    pull-to-refresh the app and long-press → reload the widget.
 
 ---
