@@ -227,20 +227,40 @@ rm -f ~/sm-adviser/.mount-write-test
 brew services start colima
 ```
 
-**1.7 Tailscale — the standalone build, not the App Store one.** Only the standalone package
-ships the full CLI with `tailscale serve`, and it runs as a system daemon.
-Download from <https://pkgs.tailscale.com/stable/#macos>, install, then:
+**1.7 Tailscale — use the Homebrew formula, NOT the standalone `.pkg`.**
+
+The `.pkg` from pkgs.tailscale.com was tried first on 25 Sep and is a dead end for a headless host:
+it installs a **GUI app** whose `tailscaled` lives inside a *network system extension*, which macOS
+parks at `[activated waiting for user]` until someone approves it in System Settings → General →
+Login Items & Extensions. Nothing runs until that click, and it cannot be done over SSH. (Symptom if
+you use the CLI anyway: `Fatal error: The current bundleIdentifier is unknown to the registry` —
+that's the app binary being run outside its bundle.)
+
+The formula gives the same version as a plain daemon, with no extension and no GUI:
 ```bash
-sudo tailscale up
-# Tailscale admin console → DNS → enable HTTPS Certificates (once per tailnet; likely already on)
-sudo tailscale serve --bg --https=8443 8787
-tailscale serve status
+brew install tailscale
+sudo brew services start tailscale     # LaunchDaemon in /Library/LaunchDaemons -> starts at BOOT
+sudo /opt/homebrew/bin/tailscale up    # prints a login URL to open
 ```
-Leave the mini under its own name for now; the rename happens in Phase 3.
+Use the **absolute path** under `sudo`: sudo's PATH puts `/usr/local/bin` ahead of
+`/opt/homebrew/bin`, so a stray `/usr/local/bin/tailscale` would win. Don't create one.
+
+`serve` and `cert` work normally — but wait for Phase 3: there's nothing on :8787 yet. Leave the
+mini under its own name (`sharath4pro24gb`); the rename happens in Phase 3.
 
 ---
 
-## Phase 2 — Move the app onto the mini
+## Phase 2 — Move the app onto the mini ✅ *done 2026-09-25*
+
+Verified on completion: arm64 build clean (all wheels, no compiler); every restored row count matches
+the NUC; `alembic current` = `c4e9a1f2b8d0 (head)` with `upgrade head` a no-op; both containers
+healthy; a real morning run succeeded (6 holdings, ₹197,503, narrative true, 0 violations); the same
+run succeeded again **via launchd** (`exit 0`, 30 s), proving the wrapper's PATH/Colima path; the
+intraday gate correctly skipped outside market hours without starting a container; and the msmtp
+alert path delivered (`smtpstatus=250`).
+
+`sma_health.state` arrived from the NUC already `fail` (BSE news degraded, 0/6 filings — pre-existing,
+not caused by the move), so carrying the state files across correctly suppressed a duplicate alert.
 
 ```bash
 # 2.1 Push code + the gitignored config from the Mac.
@@ -251,10 +271,18 @@ SMA_HOST=mini SMA_DEST=/Users/sharath/sm-adviser ./deploy/sync-to-server.sh
 #     (config.yaml isn't on the Mac at all, and it protects the server's copies from --delete).
 cd ~/sm-adviser-nuc-backup
 scp .env config.yaml theses.yaml mini:/Users/sharath/sm-adviser/
+ssh mini 'rm -f ~/sm-adviser/kite_token.json'   # don't trust another host's cached day-token
 ssh mini 'chmod 600 /Users/sharath/sm-adviser/.env'
 rsync -az reports_out/ mini:/Users/sharath/sm-adviser/reports_out/   # keeps the widget warm
 scp msmtprc mini:/Users/sharath/.msmtprc && ssh mini 'chmod 600 ~/.msmtprc'
-rsync -az monitor-state/ "mini:/Users/sharath/Library/Application Support/sm-adviser-monitor/"
+# The rescued .msmtprc carries a LINUX CA path and will fail with
+#   "cannot set X509 trust file /etc/ssl/certs/ca-certificates.crt": Error while reading file
+ssh mini 'cd ~ && cp -p .msmtprc .msmtprc.bak && \
+  sed -i "" "s|^tls_trust_file .*|tls_trust_file /etc/ssl/cert.pem|" .msmtprc && chmod 600 .msmtprc*'
+# NOTE: macOS's bundled rsync has no -s/--protect-args, so the space in "Application Support"
+# gets split by the remote shell and the copy SILENTLY does nothing. Pipe a tar instead.
+tar -C monitor-state -cf - . | ssh mini 'mkdir -p "$HOME/Library/Application Support/sm-adviser-monitor" \
+  && tar -C "$HOME/Library/Application Support/sm-adviser-monitor" -xf -'
 scp portfolio.dump mini:/Users/sharath/
 
 # 2.3 alert.env now needs macOS paths. Edit the Mac's copy (the Mac is its source of truth —

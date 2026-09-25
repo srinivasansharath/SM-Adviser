@@ -65,7 +65,9 @@ its `$HOME` mount must be **writable** (`--mount "$HOME/sm-adviser:w"`) or every
 - **Kite tokens** are single-use, ~2-min, and cached per-day in `kite_token.json`.
 - **order_flow returns 0** from datacenter IPs (NSE anti-bot); harmless, confirmation-only.
 - **The app requires HTTPS** (ATS enforced); serve via Tailscale (`tailscale serve --https=8443 8787`).
-  On macOS this needs the **standalone** Tailscale build — the App Store one has no `serve`.
+  On macOS use the **Homebrew `tailscale` formula** (`sudo brew services start tailscale`) — the
+  `.pkg`/App Store builds gate `tailscaled` behind a GUI-approved network extension. Under `sudo`,
+  call it by absolute path (`/opt/homebrew/bin/tailscale`); sudo's PATH prefers `/usr/local/bin`.
 - **FileVault is ON on the Mac Mini**, so it cannot boot unattended. Never `sudo reboot` it
   remotely — use `sudo fdesetup authrestart`, or it strands at the preboot unlock screen with no
   SSH. Automatic macOS updates are disabled so the OS can't reboot itself.
