@@ -436,6 +436,7 @@ Ordered by what the FileVault-on decision leaves exposed.
   once by hand; automating it is the real fix for "config.yaml lives on one disk".
 - **UPS** — the highest-value hardening left, now that FileVault stays on: it stops a power cut
   from becoming a reboot (and therefore a manual unlock) at all.
+- **UPS** — see above; now the highest-value item left.
 - **Off-box dead-man's switch** (explicitly deferred 25 Sep, revisit after cutover) — the on-box
   watchdog dies with the machine, so a mini that is off or stuck at the FileVault preboot screen
   reports *nothing*. Until this exists, a stale widget is the only signal. Two candidates: a

@@ -5,8 +5,12 @@ kind of events `exit_if` conditions describe — results, board meetings, manage
 pledges, ratings, corporate actions, litigation). NSE tradingsymbol -> BSE scrip code via a curated
 map for now; production should resolve via ISIN / the BSE scrip master.
 
-BSE's date-range params are unreliable, so we fetch the latest announcements and filter by date
-client-side. Degrades gracefully (returns []) on any network/parse failure, like order-flow.
+BSE **requires** both date-range params: sending them empty returns HTTP 200 with
+`{"Status": false, "Message": "Both From Date and To Date must be provided."}`, which silently
+looked like "no announcements" (that regression showed up as `news: 0/N holdings with filings`).
+They must be `YYYYMMDD` — `YYYY-MM-DD` is rejected with "Invalid Date Format." We still filter by
+date client-side as a backstop. Degrades gracefully (returns []) on any network/parse failure,
+like order-flow.
 """
 
 from __future__ import annotations
@@ -115,9 +119,15 @@ class BSEAnnouncements(NewsConnector):
         code = BSE_SCRIP.get(symbol.upper()) or resolve_scrip_by_isin(isin)
         if not code:
             return []
+        today = dt.date.today()
+        cutoff = today - dt.timedelta(days=days)
         params = {
-            "pageno": 1, "strCat": "-1", "strPrevDate": "", "strScrip": str(code),
-            "strSearch": "P", "strToDate": "", "strType": "C", "subcategory": "-1",
+            "pageno": 1, "strCat": "-1",
+            "strPrevDate": cutoff.strftime("%Y%m%d"),   # mandatory; YYYYMMDD only
+            "strScrip": str(code),
+            "strSearch": "P",
+            "strToDate": today.strftime("%Y%m%d"),      # mandatory; YYYYMMDD only
+            "strType": "C", "subcategory": "-1",
         }
         try:
             r = httpx.get(_BSE_URL, params=params, headers=_BSE_HEADERS, timeout=20)
@@ -127,7 +137,6 @@ class BSEAnnouncements(NewsConnector):
         if not isinstance(data, dict):
             return []
 
-        cutoff = dt.date.today() - dt.timedelta(days=days)
         out: list[dict] = []
         for row in data.get("Table", []):
             date_s = str(row.get("NEWS_DT") or row.get("DT_TM") or "")[:10]

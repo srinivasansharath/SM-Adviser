@@ -72,3 +72,43 @@ def test_materiality_flags_events_not_noise():
 def test_bse_unknown_symbol_returns_empty():
     # No network: an unmapped symbol short-circuits before any request.
     assert BSEAnnouncements().get_announcements("ZZ_NOT_A_SYMBOL") == []
+
+
+def test_bse_sends_mandatory_yyyymmdd_date_range(monkeypatch):
+    """BSE rejects empty date params with HTTP 200 + {"Status": false, ...}, which silently read as
+    "no announcements" (the `news: 0/N holdings with filings` regression). Pin the contract:
+    both dates present, YYYYMMDD — BSE rejects YYYY-MM-DD as "Invalid Date Format"."""
+    import datetime as dt
+
+    import httpx
+
+    seen = {}
+
+    class _Resp:
+        @staticmethod
+        def json():
+            return {"Table": [{
+                "NEWS_DT": dt.date.today().isoformat(),
+                "CATEGORYNAME": "Corp. Action", "SUBCATNAME": "Dividend",
+                "NEWSSUB": "Board approves dividend", "ATTACHMENTNAME": "x.pdf",
+                "CRITICALNEWS": "0",
+            }]}
+
+    def _fake_get(url, params=None, headers=None, timeout=None):
+        seen.update(params or {})
+        return _Resp()
+
+    # the connector does `import httpx` inside the method, so patch the module's attribute
+    monkeypatch.setattr(httpx, "get", _fake_get)
+
+    items = BSEAnnouncements().get_announcements("TCS", days=30)
+
+    assert seen["strPrevDate"] and seen["strToDate"], "both dates must be sent, never empty"
+    for key in ("strPrevDate", "strToDate"):
+        assert len(seen[key]) == 8 and seen[key].isdigit(), f"{key} must be YYYYMMDD, got {seen[key]!r}"
+        dt.datetime.strptime(seen[key], "%Y%m%d")
+    assert seen["strToDate"] == dt.date.today().strftime("%Y%m%d")
+    assert seen["strPrevDate"] == (dt.date.today() - dt.timedelta(days=30)).strftime("%Y%m%d")
+    assert seen["strScrip"] == "532540"
+    # and the row still parses
+    assert len(items) == 1 and items[0]["material"] and items[0]["source"] == "bse"
