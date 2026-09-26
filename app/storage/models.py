@@ -193,4 +193,9 @@ class Thesis(Base):
     conviction: Mapped[str | None] = mapped_column(String(16), nullable=True)  # high|medium|low
     target_weight_pct: Mapped[float | None] = mapped_column(Float, nullable=True)
     exit_if: Mapped[list | None] = mapped_column(JSON, nullable=True)
+    # Deterministic price exits. exit_if is free text judged by the LLM, which is right for
+    # "has the capex been cut?" but wrong for a stop loss: `ltp < 275` is arithmetic and must not
+    # depend on a model's daily reading. When set, these fire unconditionally in score_holding.
+    stop_below: Mapped[float | None] = mapped_column(Float, nullable=True)
+    take_above: Mapped[float | None] = mapped_column(Float, nullable=True)
     updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

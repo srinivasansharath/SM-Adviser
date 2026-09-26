@@ -22,7 +22,9 @@ app/
                           #   (yfinance), order_flow (nse), fundamentals (screener)
   auth/kite_login.py      # daily Kite access-token: cached-per-day + headless TOTP login
   analytics/              # technicals.py, fundamentals.py, order_flow.py (pure functions)
-  reasoning/              # scoring.py (6 sub-scores→composite→bands+hysteresis), theses.py,
+  reasoning/              # scoring.py (6 sub-scores→composite→bands+hysteresis + deterministic
+                          #   price_trigger), theses.py (DB-authoritative; export_theses.py dumps
+                          #   back to theses.yaml),
                           #   recommender.py, llm.py (Anthropic|mock), narrative.py, prompts.py
   reports/                # gather.py (join a run's data), daily_report.py, widget_json.py,
                           #   stock_page.py (per-stock analysis one-pager)
@@ -65,6 +67,14 @@ its `$HOME` mount must be **writable** (`--mount "$HOME/sm-adviser:w"`) or every
   `bash -x`/`set -x` on `deploy/monitor/sma-watchdog.sh` expands its authed `curl` and prints
   `WIDGET_API_TOKEN` in the trace. Debug those scripts with targeted `echo`s, not shell tracing.
 - **Kite tokens** are single-use, ~2-min, and cached per-day in `kite_token.json`.
+- **Theses live in the DB** (app-editable), NOT `theses.yaml` — that file only seeds an *empty*
+  table, so hand-editing it changes nothing. `python -m app.reasoning.export_theses` dumps the DB
+  back to it; run that after thesis edits so the readable copy isn't stale, and copy it to the Mac,
+  which is the rsync source. `PUT /theses/{symbol}` is a **partial** update (`exclude_unset`):
+  omitted fields are preserved, so an app edit can't silently null a stop loss.
+- **`exit_if` is free text judged by the LLM; `stop_below`/`take_above` are arithmetic** and fire
+  in `score_holding` before any LLM runs, forcing Exit-Candidate. Price rules belong in the latter —
+  a stop that depends on a model's daily reading is not a stop.
 - **order_flow returns 0** from datacenter IPs (NSE anti-bot); harmless, confirmation-only.
 - **The app requires HTTPS** (ATS enforced); serve via Tailscale (`tailscale serve --https=8443 8787`).
   On macOS use the **Homebrew `tailscale` formula** (`sudo brew services start tailscale`) — the

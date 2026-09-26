@@ -143,7 +143,9 @@ def put_thesis(symbol: str, body: ThesisUpsert, _: None = Depends(require_auth),
     safe = re.sub(r"[^A-Za-z0-9&_-]", "", symbol).upper()
     if not safe:
         raise HTTPException(status_code=400, detail="invalid symbol")
-    row = upsert_thesis(sf, safe, body.model_dump())
+    # exclude_unset: a PUT that omits a field leaves it alone rather than nulling it. Without
+    # this, editing thesis text from the app would wipe stop_below/take_above.
+    row = upsert_thesis(sf, safe, body.model_dump(exclude_unset=True))
     return ThesisOut.model_validate(row, from_attributes=True)
 
 

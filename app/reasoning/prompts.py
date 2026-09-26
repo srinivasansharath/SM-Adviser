@@ -51,6 +51,10 @@ def _holding_view(r: dict, meta: dict, fund: dict, news: list | None = None) -> 
         "thesis": meta.get("thesis") or "(not provided)",
         "conviction": meta.get("conviction"),
         "exit_if": meta.get("exit_if") or [],
+        # Surfaced so the narrative agrees with the deterministic trigger in score_holding,
+        # which has already forced Exit-Candidate if either was breached.
+        "stop_below": meta.get("stop_below"),
+        "take_above": meta.get("take_above"),
         "recent_filings": filings,
     }
 

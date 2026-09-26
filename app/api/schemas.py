@@ -59,6 +59,8 @@ class ThesisUpsert(BaseModel):
     conviction: str | None = None          # high | medium | low
     target_weight_pct: float | None = None
     exit_if: list[str] = []
+    stop_below: float | None = None        # deterministic exit: ltp <= this
+    take_above: float | None = None        # deterministic exit: ltp >= this
 
 
 class ThesisOut(ThesisUpsert):

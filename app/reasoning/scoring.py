@@ -153,6 +153,42 @@ def classify(score: float, prev: str | None, config: dict) -> str:
     return nominal
 
 
+def price_trigger(meta: dict | None, ltp: float | None) -> str | None:
+    """Deterministic price exits from the thesis: `stop_below` and `take_above`.
+
+    Free-text `exit_if` conditions are judged by the LLM, which is right for "has the copper-
+    recycling capex been cut?" and wrong for a stop loss — `ltp <= 275` is arithmetic, and a stop
+    that depends on a model's daily reading is not a stop. These fire unconditionally, before any
+    LLM runs, and force Exit-Candidate.
+
+    Returns a human-readable reason, or None when nothing is triggered.
+    """
+    if not meta or ltp is None:
+        return None
+    try:
+        ltp = float(ltp)
+    except (TypeError, ValueError):
+        return None
+
+    stop = meta.get("stop_below")
+    take = meta.get("take_above")
+
+    # Stop first: capital preservation outranks profit-taking if both somehow trip.
+    if stop is not None:
+        try:
+            if ltp <= float(stop):
+                return f"price {ltp:g} at or below your stop {float(stop):g}"
+        except (TypeError, ValueError):
+            pass
+    if take is not None:
+        try:
+            if ltp >= float(take):
+                return f"price {ltp:g} at or above your target {float(take):g}"
+        except (TypeError, ValueError):
+            pass
+    return None
+
+
 def score_holding(holding: dict, metric: dict | None, order_flow: dict | None,
                   fundamentals: dict | None, meta: dict | None, prev: str | None, config: dict,
                   news: list | None = None, news_risk_override: float | None = None) -> dict:
@@ -187,6 +223,14 @@ def score_holding(holding: dict, metric: dict | None, order_flow: dict | None,
     if override:
         classification = Classification.EXIT.value
         reasons.insert(0, f"OVERRIDE → Exit: {override}")
+
+    # Deterministic price exits from the thesis. Checked here, not by the LLM, so a stop loss
+    # fires on arithmetic rather than on a model's reading of free text. Inserted last so it
+    # leads the reason list — it is the most actionable thing in it.
+    triggered = price_trigger(meta, ltp)
+    if triggered:
+        classification = Classification.EXIT.value
+        reasons.insert(0, f"OVERRIDE → Exit: {triggered}")
 
     return {
         "symbol": holding["symbol"],
