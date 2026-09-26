@@ -4,6 +4,11 @@
 !*.env.example
 config.yaml
 theses.yaml
+# also catch editor/backup spinoffs of the secret files — `theses.yaml` alone does not match
+# `theses.yaml.bak`, so a `git add -A` would happily stage your investment reasoning.
+config.yaml.*
+theses.yaml.*
+*.bak
 secrets/
 *.key
 *.pem

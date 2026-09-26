@@ -19,6 +19,7 @@ from zoneinfo import ZoneInfo
 
 from ..config import get_settings, load_yaml_config
 from ..connectors import get_connector
+from ..connectors.base import effective_qty
 from ..reports.widget_json import json_safe
 
 IST = ZoneInfo("Asia/Kolkata")
@@ -64,7 +65,7 @@ def run(now: dt.datetime | None = None, force: bool = False) -> dict:
             continue
         ltp = float(h.get("last_price") or 0)
         avg = float(h.get("average_price") or 0)
-        qty = float(h.get("quantity") or 0)
+        qty = effective_qty(h)
         dc = h.get("day_change_percentage")
         pnl = h.get("pnl")
         row["ltp"] = ltp

@@ -21,7 +21,7 @@ from ..analytics.order_flow import compute_delivery_signal
 from ..analytics.technicals import compute_metrics
 from ..config import get_settings, load_yaml_config
 from ..connectors import get_connector
-from ..connectors.base import PortfolioConnector
+from ..connectors.base import PortfolioConnector, effective_qty
 from ..connectors.fundamentals import FundamentalsConnector
 from ..connectors.market_data import MarketDataConnector
 from ..connectors.news import NewsConnector
@@ -42,7 +42,7 @@ _MA_HISTORY_DAYS = 260  # enough candles for the 200-DMA and the ~252-day (1-yea
 
 
 def _holding_value(h: dict) -> float:
-    return float(h.get("last_price", 0)) * float(h.get("quantity", 0))
+    return float(h.get("last_price", 0)) * effective_qty(h)
 
 
 def _lookback(config: dict) -> int:
@@ -290,7 +290,7 @@ def run(
                     run_date=run_date,
                     symbol=h["tradingsymbol"],
                     exchange=h.get("exchange"),
-                    qty=float(h.get("quantity", 0)),
+                    qty=effective_qty(h),
                     avg_price=float(h.get("average_price", 0)),
                     ltp=float(h.get("last_price", 0)),
                     pnl=h.get("pnl"),
