@@ -475,9 +475,9 @@ Ordered by what the FileVault-on decision leaves exposed.
   once by hand; automating it is the real fix for "config.yaml lives on one disk".
 - **UPS** — the highest-value hardening left, now that FileVault stays on: it stops a power cut
   from becoming a reboot (and therefore a manual unlock) at all.
-- **UPS** — see above; now the highest-value item left.
-- **Off-box dead-man's switch** (explicitly deferred 25 Sep, revisit after cutover) — the on-box
-  watchdog dies with the machine, so a mini that is off or stuck at the FileVault preboot screen
-  reports *nothing*. Until this exists, a stale widget is the only signal. Two candidates: a
-  Synology Task Scheduler job curling `/health` on the LAN, or a healthchecks.io-style ping from
-  the morning job (which also catches "the run silently didn't happen").
+- ~~**UPS**~~ — resolved 2026-09-26: the office is on a UPS, and the NAS is additionally on a
+  separate home UPS line, which is why it makes a good independent witness.
+- ~~**Off-box dead-man's switch**~~ — **built 2026-09-26**, see `deploy/macos/README.md`. The Mini
+  publishes heartbeats over SSH to the NAS; `deploy/monitor/nas-deadman.sh` on the NAS (separate UPS
+  line) alerts via DSM when they stop. Fail-safe: silence is the alarm. Still to do: create the DSM
+  Task Scheduler entry (GUI).

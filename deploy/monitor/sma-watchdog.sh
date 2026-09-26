@@ -107,6 +107,17 @@ PY
   fi
 fi
 
+# --- Off-box heartbeat -------------------------------------------------------------
+# Runs every 20 min, so its absence is what tells the NAS this host has gone quiet — the case
+# this watchdog structurally cannot report, because it dies with the login session.
+# Status reflects the checks above: any break => fail, so the NAS can distinguish
+# "host is dead" (no file / stale) from "host is alive but unhealthy" (status=fail).
+if [ "${#breaks[@]}" -gt 0 ]; then
+  "$HERE/sma-heartbeat.sh" watchdog fail "${#breaks[@]} check(s) failing" 2>/dev/null
+else
+  "$HERE/sma-heartbeat.sh" watchdog ok "all checks pass" 2>/dev/null
+fi
+
 # --- One batched email per direction ---
 if [ "${#breaks[@]}" -gt 0 ]; then
   {

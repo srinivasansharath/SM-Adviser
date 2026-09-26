@@ -91,6 +91,48 @@ SMA_HOST=mini ./deploy/sync-to-server.sh
 ssh mini 'cd ~/sm-adviser && docker compose --profile job run --rm migrate'
 ```
 
+## Off-box dead-man's switch
+
+The on-box watchdog cannot tell you the host is down — it is a user LaunchAgent and dies with the
+login session (proven 2026-09-26: a real outage, zero alerts, every state file still `ok`). So the
+Mini publishes heartbeats *outward* and the NAS raises the alarm when they stop. Silence is the
+alarm, which is the property an active prober cannot give you.
+
+```
+Mini                                          NAS (separate UPS line)
+  sma-job.sh      --(ssh)-->  morning-run.json  --\
+  sma-watchdog.sh --(ssh)-->  watchdog.json     --+--> nas-deadman.sh --(exit 1)--> DSM emails
+                                                     every 15-20 min via Task Scheduler
+```
+
+| Heartbeat | Written by | Cadence | NAS tolerance |
+|---|---|---|---|
+| `watchdog.json` | `sma-watchdog.sh` | 20 min | 60 min (two misses) |
+| `morning-run.json` | `sma-job.sh` | weekdays | 90 h (clears a weekend) |
+
+`intraday-run` deliberately does **not** heartbeat: it is gated to market hours, so its silence is
+normal and would alert daily. Each heartbeat carries `status` (`ok`/`fail`), so the NAS distinguishes
+*"host is dead"* (stale/missing) from *"host is alive but unhealthy"* (`status=fail`).
+
+**It publishes over SSH, not the SMB mount.** Writing to `/Volumes/home` works from a shell and
+fails from launchd with `Operation not permitted` — macOS withholds network-volume access from
+launchd jobs. A mount-based heartbeat therefore passes every manual test and silently never fires
+in production. Uses `~/.ssh/id_ed25519_nas_heartbeat` (no passphrase), authorised on the NAS.
+
+```bash
+# check what the NAS last heard
+ssh home-nas 'cat /volume1/homes/sharath/sm-adviser-heartbeat/*.json'
+# run the listener by hand: silent + exit 0 = healthy, exit 1 = the report DSM would email
+ssh home-nas '/volume1/homes/sharath/nas-deadman.sh; echo "exit: $?"'
+# prove it still fires (then let the next real heartbeat clear it)
+ssh home-nas 'touch -d "2 hours ago" /volume1/homes/sharath/sm-adviser-heartbeat/watchdog.json'
+```
+
+Install on the NAS: **DSM → Control Panel → Task Scheduler → Create → User-defined script**, every
+15–20 min, script `/volume1/homes/sharath/nas-deadman.sh`, and tick *Send run details by email* +
+*only when the script terminates abnormally*. DSM's own notification settings deliver it, so no
+SMTP config or credentials live on the NAS.
+
 ## Gotchas specific to this host
 
 - **The Colima mount must be writable.** The stack writes `reports_out/`, `data/` and

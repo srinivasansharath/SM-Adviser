@@ -78,8 +78,11 @@ its `$HOME` mount must be **writable** (`--mount "$HOME/sm-adviser:w"`) or every
   agents are *user* LaunchAgents: `gui/501` doesn't exist until login, and `launchctl bootstrap`
   over SSH fails with `125: Domain does not support specified action`. One login restores
   everything; Screen Sharing to :5900 reaches the login window, so it's a remote fix.
-  Corollary: the watchdog is a user agent too, so **it cannot alert you that the host is down** —
-  that needs an off-box check.
+  Corollary: the watchdog is a user agent too, so it cannot alert you that the host is down. That
+  is covered by an **off-box dead-man's switch**: the Mini publishes heartbeats over SSH to the NAS
+  and `deploy/monitor/nas-deadman.sh` there alerts when they stop. Heartbeats go over **SSH, not the
+  SMB mount** — launchd jobs get `Operation not permitted` on network volumes, so a mount-based
+  heartbeat passes manual tests and never fires in production.
 - Keep the read-only, no-auto-trading boundary and the "not investment advice" disclaimers intact.
 
 ## Tests must pass before commit

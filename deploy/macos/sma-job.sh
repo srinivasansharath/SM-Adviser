@@ -43,6 +43,7 @@ if command -v colima >/dev/null 2>&1; then
     log "colima not running — starting it"
     if ! colima start >>"$LOG" 2>&1; then
       log "FATAL: colima start failed; skipping $JOB"
+      "$REPO/deploy/monitor/sma-heartbeat.sh" "$JOB" fail "colima start failed" 2>>"$LOG"
       "$REPO/deploy/monitor/sma-morning-failure.sh" "$JOB" "$LOG" 2>/dev/null \
         || log "(failure alert could not be sent)"
       exit 1
@@ -56,6 +57,17 @@ log "start $JOB"
 docker compose --profile job run --rm "$JOB" >>"$LOG" 2>&1
 rc=$?
 log "end $JOB (exit $rc)"
+
+# --- 3b. Off-box heartbeat (see deploy/monitor/sma-heartbeat.sh for why) ----------
+# The intraday tick is excluded: it is gated to market hours, so its silence is normal and
+# would produce daily false alarms. morning-run and weekly-screen are the meaningful ones.
+if [ "$JOB" != "intraday-run" ]; then
+  if [ "$rc" -eq 0 ]; then
+    "$REPO/deploy/monitor/sma-heartbeat.sh" "$JOB" ok "exit 0" 2>>"$LOG"
+  else
+    "$REPO/deploy/monitor/sma-heartbeat.sh" "$JOB" fail "exit $rc" 2>>"$LOG"
+  fi
+fi
 
 # --- 4. Alert on failure (systemd's OnFailure= equivalent) ----------------------
 # Intraday is deliberately silent: a missed tick just means prices lag until the next one,
