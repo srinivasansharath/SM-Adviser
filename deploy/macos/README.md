@@ -128,10 +128,18 @@ ssh home-nas '/volume1/homes/sharath/nas-deadman.sh; echo "exit: $?"'
 ssh home-nas 'touch -d "2 hours ago" /volume1/homes/sharath/sm-adviser-heartbeat/watchdog.json'
 ```
 
-Install on the NAS: **DSM → Control Panel → Task Scheduler → Create → User-defined script**, every
-15–20 min, script `/volume1/homes/sharath/nas-deadman.sh`, and tick *Send run details by email* +
-*only when the script terminates abnormally*. DSM's own notification settings deliver it, so no
-SMTP config or credentials live on the NAS.
+Install on the NAS: **DSM → Control Panel → Task Scheduler → Create → User-defined script**.
+Schedule: Daily, start 00:00, *Continue running within the same day*, repeat **every 20 minutes**,
+last run 23:40. Task Settings: `bash /volume1/homes/sharath/nas-deadman.sh`, tick *Send run details
+by email* **and** *only when the script terminates abnormally* — that second tick is what makes
+silence mean healthy. DSM's own notification settings deliver it, so no SMTP config or credentials
+live on the NAS.
+
+**Alert volume is rate-limited in the script, not by the schedule.** Running every 20 min means a
+persistent fault would otherwise email ~30 times overnight, so `nas-deadman.sh` keeps break state in
+`~/.sm-adviser-deadman/`: it alerts on the transition into a fault, stays silent while it persists,
+reminds every `REMIND_HOURS` (default 6), and clears on recovery so the *next* fault alerts at once.
+Recovery itself is not announced — exit 0 means DSM sends nothing by design.
 
 ## Gotchas specific to this host
 

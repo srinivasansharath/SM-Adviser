@@ -18,7 +18,17 @@
 # credentials are needed on the NAS.
 #
 # Thresholds are deliberately tolerant: one missed heartbeat must not page anyone.
+#
+# RATE LIMITING. DSM runs this every 20 min, and it emails whenever the script exits non-zero. A
+# naive implementation therefore sends ~30 mails during an overnight outage. So it tracks state:
+# it exits non-zero on the TRANSITION into a fault and then stays quiet, re-reminding only every
+# REMIND_HOURS while the fault persists. Recovery cannot be announced through this channel (exit 0
+# means DSM sends nothing), so it is simply recorded in the state file.
 set -uo pipefail
+
+STATE_DIR="${DEADMAN_STATE_DIR:-/volume1/homes/sharath/.sm-adviser-deadman}"
+REMIND_HOURS="${REMIND_HOURS:-6}"
+mkdir -p "$STATE_DIR" 2>/dev/null
 
 DIR="${HEARTBEAT_DIR:-/volume1/homes/sharath/sm-adviser-heartbeat}"
 
@@ -69,11 +79,36 @@ check() {  # check <name> <max_age_seconds> <human_window>
 check watchdog     $(( WATCHDOG_MAX_MIN * 60 ))    "${WATCHDOG_MAX_MIN}m"
 check morning-run  $(( MORNING_MAX_HOURS * 3600 )) "${MORNING_MAX_HOURS}h"
 
+STATE="$STATE_DIR/last_alert"
+
 if [ "${#problems[@]}" -eq 0 ]; then
+  # Healthy. Clear the fault state so the NEXT fault alerts immediately rather than being
+  # swallowed by a stale reminder window.
+  if [ -f "$STATE" ]; then
+    echo "recovered $(date '+%F %T %Z')" > "$STATE_DIR/last_recovery" 2>/dev/null
+    rm -f "$STATE" 2>/dev/null
+  fi
   exit 0          # silent = healthy; DSM sends nothing
 fi
 
-echo "SM Adviser dead-man's switch tripped on $(hostname) at $(date '+%F %T %Z')."
+# Faulty. Alert on the transition, then at most once every REMIND_HOURS.
+last_alert=0
+[ -f "$STATE" ] && last_alert="$(cat "$STATE" 2>/dev/null || echo 0)"
+case "$last_alert" in ''|*[!0-9]*) last_alert=0 ;; esac
+since=$(( now - last_alert ))
+
+if [ "$last_alert" -gt 0 ] && [ "$since" -lt $(( REMIND_HOURS * 3600 )) ]; then
+  # Already reported and still inside the quiet window — stay silent so DSM sends nothing.
+  exit 0
+fi
+echo "$now" > "$STATE" 2>/dev/null
+
+if [ "$last_alert" -gt 0 ]; then
+  echo "SM Adviser dead-man's switch STILL TRIPPED on $(hostname) at $(date '+%F %T %Z')"
+  echo "(reminder — first reported $(( since / 3600 ))h ago; repeats every ${REMIND_HOURS}h until fixed)"
+else
+  echo "SM Adviser dead-man's switch tripped on $(hostname) at $(date '+%F %T %Z')." 
+fi
 echo
 printf '  - %s\n' "${problems[@]}"
 echo
