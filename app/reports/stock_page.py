@@ -21,7 +21,11 @@ _CLASS_COLOR = {
     "Trim Candidate": "#ea580c",
     "Exit Candidate": "#dc2626",
 }
-_THESIS_COLOR = {"intact": "#16a34a", "watch": "#d97706", "impaired": "#dc2626"}
+# "none" = no thesis written yet. Deliberately neutral grey: green would be false reassurance
+# about something never examined, red would imply the holding is bad rather than undocumented.
+_THESIS_COLOR = {"intact": "#16a34a", "watch": "#d97706", "impaired": "#dc2626",
+                 "none": "#6b7280"}
+_THESIS_LABEL = {"none": "NO THESIS YET"}
 _SUBSCORE_LABELS = {
     "technical": "Technical", "fundamental": "Fundamental", "valuation": "Valuation",
     "portfolio_fit": "Portfolio fit", "thesis": "Thesis", "news_risk": "News risk",
@@ -149,14 +153,20 @@ def render_stock_page(row: dict, note: dict | None, run_date: str, prices_as_of:
     note = note or {}
     thesis = (note.get("thesis_status") or "").lower()
     note_txt = note.get("note")
+    feedback = note.get("thesis_feedback")
     analyst = ""
-    if note_txt:
+    if note_txt or feedback:
         badge = ""
         if thesis:
             tc = _THESIS_COLOR.get(thesis, "#6b7280")
-            badge = f'<span class="pill" style="background:{tc}">Thesis: {thesis.upper()}</span>'
-        analyst = (f'<section class="card"><h2>Analyst view {badge}</h2>'
-                   f'<p class="note">{_esc(note_txt)}</p></section>')
+            label = _THESIS_LABEL.get(thesis, f"Thesis: {thesis.upper()}")
+            badge = f'<span class="pill" style="background:{tc}">{label}</span>'
+        body = f'<p class="note">{_esc(note_txt)}</p>' if note_txt else ""
+        if feedback:
+            heading = "Write a thesis" if thesis == "none" else "Sharpen your thesis"
+            body += (f'<p class="note" style="border-left:3px solid #6b7280;padding-left:.6rem">'
+                     f'<strong>{heading}:</strong> {_esc(feedback)}</p>')
+        analyst = f'<section class="card"><h2>Analyst view {badge}</h2>{body}</section>' 
 
     ltp = row.get("ltp")
     ltp_txt = "—" if ltp is None else (f"₹{ltp:,.0f}" if ltp >= 1000 else f"₹{ltp:,.2f}")

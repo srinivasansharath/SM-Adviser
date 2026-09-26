@@ -44,9 +44,40 @@ def test_portfolio_fit_penalizes_concentration():
 
 
 def test_thesis_conviction_baseline():
-    assert score_thesis({"conviction": "high"}, 5, metric(), 100, {}) > score_thesis(
-        {"conviction": "low"}, 5, metric(), 100, {}
-    )
+    # Conviction still drives the baseline — but only once there is a thesis to attach it to.
+    high = {"thesis": "quality compounder", "conviction": "high"}
+    low = {"thesis": "quality compounder", "conviction": "low"}
+    assert score_thesis(high, 5, metric(), 100, {}) > score_thesis(low, 5, metric(), 100, {})
+
+
+def test_unwritten_thesis_scores_unknown_not_a_number():
+    """An unwritten thesis used to score 60/100 and enter the composite at full weight, so the
+    engine asserted a moderately-healthy thesis that did not exist — and still reported High
+    confidence. Absence must be unknown, like news_risk with no filings."""
+    from app.reasoning.scoring import has_thesis
+
+    boilerplate = ["Revenue or EPS declines for 2 consecutive quarters",
+                   "Falls below the 200-DMA while fundamentals deteriorate"]
+    for empty in (None, {}, {"thesis": "", "exit_if": []}, {"thesis": "   "},
+                  {"conviction": "high"},              # scaffold default, not content
+                  {"thesis": "", "exit_if": boilerplate}):  # seeded checklist, not reasoning
+        assert has_thesis(empty) is False
+        assert score_thesis(empty, 5, metric(), 100, {}) is None
+
+    # Only a written thesis or an explicit price threshold counts as deliberate input.
+    for present in ({"thesis": "copper recycling"}, {"stop_below": 275}, {"take_above": 450},
+                    {"thesis": "quality compounder", "exit_if": boilerplate}):
+        assert has_thesis(present) is True
+        assert score_thesis(present, 5, metric(), 100, {}) is not None
+
+
+def test_unknown_thesis_lowers_coverage_rather_than_inflating_score():
+    subs = {"thesis": 60.0, "fundamental": 55.0, "technical": 45.0,
+            "valuation": 50.0, "news_risk": 70.0, "portfolio_fit": 40.0}
+    _, cov_with, _ = composite(subs)
+    _, cov_without, _ = composite({**subs, "thesis": None})
+    assert cov_with == 1.0
+    assert cov_without < cov_with, "an absent thesis must reduce coverage, not be invented"
 
 
 def test_composite_low_coverage_is_low_confidence():

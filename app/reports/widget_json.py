@@ -48,6 +48,7 @@ def build_widget(data: dict, as_of: str | None = None, narrative: dict | None = 
                 "classification": r.get("classification"),
                 "confidence": r.get("confidence"),
                 "thesis_status": note.get("thesis_status"),
+                "thesis_feedback": note.get("thesis_feedback"),
                 "flag": r["flag"],
                 "flag_reason": (r.get("rec_reason") or (r["reasons"][0] if r["reasons"] else None)),
             }

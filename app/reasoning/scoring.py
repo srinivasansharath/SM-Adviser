@@ -85,8 +85,36 @@ def score_portfolio_fit(weight: float | None, target: float | None, config: dict
     return round(max(0, min(100, s)), 1)
 
 
+def has_thesis(meta: dict | None) -> bool:
+    """Is there actual thesis content to judge against?
+
+    `conviction` alone does not count: it defaults to "medium" in the scaffold, so treating it as
+    evidence is how an unwritten thesis came to score 60/100. Real content means written reasoning,
+    exit conditions, or explicit price thresholds.
+    """
+    if not meta:
+        return False
+    if (meta.get("thesis") or "").strip():
+        return True
+    # Explicit price thresholds are unambiguous deliberate input.
+    if meta.get("stop_below") is not None or meta.get("take_above") is not None:
+        return True
+    # exit_if alone deliberately does NOT count. The scaffold seeds every holding with the same
+    # four generic conditions — on this portfolio, 7 holdings shared a byte-identical list — so
+    # treating it as evidence of a written thesis reinstates exactly the fabrication this avoids.
+    # A user who has actually reasoned about a holding writes the thesis line too.
+    return False
+
+
 def score_thesis(meta: dict | None, weight: float | None, metric: dict | None, ltp: float | None,
-                 order_flow: dict | None) -> float:
+                 order_flow: dict | None) -> float | None:
+    """None when there is no thesis to score — the honest 'unknown', which composite() renormalises
+    around and which drops coverage so confidence reflects what we actually know. Same contract as
+    news_risk when there are no filings. Inventing a score here silently inflated the composite for
+    every holding the user had not yet written up, and reported High confidence for it.
+    """
+    if not has_thesis(meta):
+        return None
     conviction = (meta or {}).get("conviction", "medium")
     s = float(_CONVICTION_BASE.get(conviction, 60))
     if metric and ltp and metric.get("sma_200") and ltp < metric["sma_200"] and (metric.get("rel_strength") or 0) < -5:

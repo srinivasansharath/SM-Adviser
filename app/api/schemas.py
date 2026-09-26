@@ -38,7 +38,8 @@ class HoldingOut(BaseModel):
     pnl: float | None = None
     classification: str | None = None
     confidence: str | None = None
-    thesis_status: str | None = None
+    thesis_status: str | None = None      # intact | watch | impaired | none
+    thesis_feedback: str | None = None    # what to write, or the biggest gap in what is written
     flag: str | None = None
 
 

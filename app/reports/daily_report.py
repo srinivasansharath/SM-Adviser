@@ -123,7 +123,12 @@ def build_markdown(data: dict, narrative: dict | None = None) -> str:
         L.append(f"- Reasons: {_reasons(r)}")
         note = notes.get(r["symbol"])
         if isinstance(note, dict) and note.get("note"):
-            L.append(f"- Analyst: {note['note']} _(thesis {note.get('thesis_status', '?')})_")
+            status = note.get("thesis_status", "?")
+            label = "no thesis yet" if status == "none" else f"thesis {status}"
+            L.append(f"- Analyst: {note['note']} _({label})_")
+            if note.get("thesis_feedback"):
+                lead = "Write a thesis" if status == "none" else "Sharpen your thesis"
+                L.append(f"  - _{lead}: {note['thesis_feedback']}_")
         L.append("")
 
     return "\n".join(L)

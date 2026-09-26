@@ -22,9 +22,13 @@ do not overreact to a single routine filing. If the thesis text is missing, say 
 
 _SCHEMA = (
     '{"executive": "<=3 sentences: portfolio state + biggest risks", '
-    '"holdings": {"<SYMBOL>": {"thesis_status": "intact|watch|impaired", '
+    '"holdings": {"<SYMBOL>": {"thesis_status": "intact|watch|impaired|none", '
     '"note": "1-2 sentences tying the score, fundamentals and thesis; note which exit_if conditions '
-    '(if any) are triggered"}}}'
+    '(if any) are triggered", '
+    '"thesis_feedback": "1-2 sentences. If thesis is (not provided): suggest what a thesis for THIS '
+    'holding should commit to, grounded in its own pe/roce/roe/technicals/filings above - specific, '
+    'not generic advice. Otherwise: name the single biggest gap in the thesis as written, e.g. a '
+    'price target with nothing covering business-case failure."}}}'
 )
 
 
@@ -70,8 +74,16 @@ def build_user_prompt(data: dict, theses: dict, fundamentals_data: dict | None,
     payload = {"as_of": data["run_date"], "portfolio": data["portfolio"], "holdings": holdings}
     return (
         "Today's scored portfolio (a deterministic engine already classified each holding). "
-        "Evaluate each holding's thesis (intact/watch/impaired) by checking its exit_if conditions "
-        "against the evidence, then write a portfolio executive summary.\n\n"
+        "Evaluate each holding's thesis by checking its exit_if conditions against the evidence, "
+        "then write a portfolio executive summary.\n\n"
+        "thesis_status rules: use \"none\" whenever thesis is \"(not provided)\", even if exit_if "
+        "is populated — those conditions are usually generic scaffold text, not reasoning about "
+        "this holding. "
+        "Never report such a holding as \"intact\" — that reads as reassurance about something "
+        "never examined. Use intact/watch/impaired only where there is something to judge.\n"
+        "This investor is deliberately learning as they go, so many holdings have no thesis yet. "
+        "That is expected, not a failing — never scold. Use thesis_feedback to make the next step "
+        "concrete and specific to the holding.\n\n"
         f"{json.dumps(payload, indent=2, default=str)}\n\n"
         f"Return STRICT JSON exactly matching this schema:\n{_SCHEMA}"
     )

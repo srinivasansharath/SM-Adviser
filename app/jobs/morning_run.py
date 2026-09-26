@@ -421,7 +421,12 @@ def run(
         try:
             narrative = generate_narrative(llm, data, theses, fundamentals_data, news_data)
             _store_llm_call(session_factory, run_date, build_user_prompt(data, theses, fundamentals_data, news_data), narrative["usage"])
-            summary["narrative"] = True
+            # An unparseable response yields zero per-holding analysis; saying narrative: true
+            # there would report success for an empty result.
+            summary["narrative"] = bool(narrative.get("parsed_ok", True)) and bool(narrative["holdings"])
+            summary["narrative_holdings"] = len(narrative["holdings"])
+            if not summary["narrative"]:
+                summary["narrative_error"] = "response did not parse or contained no holdings"
             summary["narrative_violations"] = len(narrative["violations"])
             summary["llm_tokens"] = narrative["usage"].input_tokens + narrative["usage"].output_tokens
         except Exception as e:
