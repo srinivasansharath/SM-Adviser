@@ -73,6 +73,13 @@ its `$HOME` mount must be **writable** (`--mount "$HOME/sm-adviser:w"`) or every
 - **FileVault is ON on the Mac Mini**, so it cannot boot unattended. Never `sudo reboot` it
   remotely — use `sudo fdesetup authrestart`, or it strands at the preboot unlock screen with no
   SSH. Automatic macOS updates are disabled so the OS can't reboot itself.
+- **A reboot leaves the stack down until someone logs in** (verified 2026-09-26). `authrestart`
+  boots the OS and returns sshd + tailscaled, but Colima, Docker, the API and all four launchd
+  agents are *user* LaunchAgents: `gui/501` doesn't exist until login, and `launchctl bootstrap`
+  over SSH fails with `125: Domain does not support specified action`. One login restores
+  everything; Screen Sharing to :5900 reaches the login window, so it's a remote fix.
+  Corollary: the watchdog is a user agent too, so **it cannot alert you that the host is down** —
+  that needs an off-box check.
 - Keep the read-only, no-auto-trading boundary and the "not investment advice" disclaimers intact.
 
 ## Tests must pass before commit

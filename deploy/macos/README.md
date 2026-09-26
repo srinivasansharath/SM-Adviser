@@ -105,7 +105,12 @@ ssh mini 'cd ~/sm-adviser && docker compose --profile job run --rm migrate'
   password. Once they do, macOS passes that auth through to a login session, so the LaunchAgents and
   Colima return from that one password entry. Consequences for ops:
   - **Never `sudo reboot` remotely.** Use `sudo fdesetup authrestart` (supported on this mini), which
-    stores the unlock key for exactly one boot so the machine comes back by itself.
+    stores the unlock key for exactly one boot so the *machine* comes back by itself.
+  - **But the stack does not.** `authrestart` creates no login session, so after a reboot you get
+    sshd and tailscaled and nothing else — no Colima, no Docker, no API, and `launchctl list |
+    grep -c sm-adviser` returns 0. They cannot be armed over SSH (`gui/501` doesn't exist:
+    `Bootstrap failed: 125`). **One login restores all of it**, and Screen Sharing reaches the
+    login window on :5900, so it's a remote fix. Verified 2026-09-26.
   - **Automatic macOS updates are disabled** for the same reason — an unattended update reboot would
     silently stop the morning run. Update deliberately, then `authrestart`.
   - The on-box watchdog **cannot** tell you the mini is down; that needs an off-box check.

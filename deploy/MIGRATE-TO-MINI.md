@@ -388,11 +388,54 @@ The iOS app stores the server URL + bearer token. Reusing the NUC's MagicDNS nam
 
 ---
 
-## Phase 4 — Reboot test, then retire the NUC
+## Phase 4 — Reboot test ✅ *run 2026-09-26. Result: the stack does NOT come back by itself.*
 
-**Deferred 25 Sep** along with the OS update, since it requires a reboot. The cutover *works*
-without it, but this test is what proves the stack comes back by itself — so treat retiring the NUC
-before running it as carrying real risk, and keep the NUC available until it passes.
+**This is the most important operational fact about the host, so it is written up in full.**
+
+`sudo fdesetup authrestart` works as advertised — it unlocks the FileVault volume for exactly one
+boot, so the Mac reboots with nobody present and SSH comes back in ~10s. But it **does not create a
+login session**, and that splits the stack in two:
+
+| Layer | Returns after `authrestart` with no login | Why |
+|---|---|---|
+| sshd | **yes** | system daemon |
+| tailscaled (+ `serve` config) | **yes** | Homebrew system LaunchDaemon |
+| Colima VM | no | user LaunchAgent (`brew services`) |
+| Docker daemon | no | needs Colima |
+| API :8787 | no | needs Docker |
+| morning / intraday / weekly / watchdog | no | user LaunchAgents |
+
+Measured immediately after the reboot: `stat -f %Su /dev/console` = `root`, `who` empty, and
+`launchctl list | grep -c sm-adviser` = **0**. The agents cannot be armed over SSH either:
+
+```
+$ launchctl bootstrap gui/501 ~/Library/LaunchAgents/com.sharath.sm-adviser.morning.plist
+Bootstrap failed: 125: Domain does not support specified action      # gui/501 does not exist yet
+```
+
+**One login fixes everything** — `brew services`' Colima starts, the containers return on
+`restart: unless-stopped`, the API answers, and all four agents load. Nothing needs manual repair,
+and Postgres data is intact across the reboot.
+
+**Crucially, Screen Sharing is reachable at the login window** (port 5900 open), so that login can
+be done from a phone or laptop in well under a minute. That is the difference between this and the
+NUC, which needed a wall-socket power cycle.
+
+**This is the Colima-vs-native tradeoff made concrete.** Native Postgres + uvicorn under *system*
+LaunchDaemons would have returned with no login; Colima cannot, because a VM needs a user session,
+and FileVault rules out automatic login. Options, cheapest first:
+1. **UPS** — stops the reboot happening at all. Still the best value.
+2. **Accept it** — remote login via Screen Sharing after any reboot.
+3. **Move Postgres + uvicorn to native system LaunchDaemons** — real work, loses Docker parity, but
+   the only route to genuinely unattended recovery while FileVault stays on.
+
+**Second finding, arguably worse: the outage was never alerted.** The watchdog is itself a user
+LaunchAgent, so it died with the stack and never observed the failure; by the time it restarted
+everything was healthy. `~/.msmtp.log` shows no mail for the outage window and every `*.state` file
+reads `ok`. A ~5-minute outage passed in total silence. Until an **off-box** check exists, a reboot
+at 3am means the morning run silently does not happen and nothing tells you.
+
+Then, to retire the NUC:
 
 ⚠️ Use `fdesetup authrestart`, **not** `sudo reboot`. With FileVault on, a plain remote reboot
 strands the mini at the preboot unlock screen — no SSH, no Screen Sharing — until someone walks
@@ -400,16 +443,12 @@ over to it. `authrestart` stores the unlock key for exactly one boot, so it come
 
 ```bash
 ssh -t mini 'sudo fdesetup authrestart'      # -t: it prompts for the password interactively
-# wait ~90s, then — with nobody touching the mini:
+# ~10s later SSH is back, but the stack is NOT — log in (Screen Sharing to :5900 works), then:
 ssh mini 'colima status && docker compose -f ~/sm-adviser/docker-compose.yml ps && \
-          curl -fsS localhost:8787/health && launchctl list | grep sm-adviser'
+          curl -fsS localhost:8787/health && launchctl list | grep -c sm-adviser'
 ```
-All four must come back on their own. If they don't, `brew services start colima` isn't in effect
-(or the LaunchAgents aren't bootstrapped) — fix that before retiring the NUC.
-
-This proves the *planned*-reboot path. It cannot prove the unplanned one: after a power cut the
-mini will sit at the preboot screen until someone types the password. That's the residual risk you
-accepted by keeping FileVault on, and it's what the UPS and the dead-man's switch are for.
+Expect 4 agents and a healthy API *after* the login, not before. If they are still missing once you
+are logged in, `brew services start colima` is not in effect or the agents were never bootstrapped.
 
 Then:
 ```bash
