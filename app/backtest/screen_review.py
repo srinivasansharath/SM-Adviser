@@ -54,6 +54,11 @@ def load_candidates(session_factory) -> list[dict]:
                 "cmp": float(cmp_price),
                 "verdict": (llm.get("verdict") if isinstance(llm, dict) else None),
                 "buckets": c.buckets or [],
+                "subscores": detail.get("subscores") or {},
+                "sector": data.get("sector"),
+                "pe": data.get("pe"),
+                "roce": data.get("roce"),
+                "market_cap": data.get("market_cap"),
             })
     return out
 
@@ -134,6 +139,73 @@ def review(session_factory, market_data, benchmark: str = "^NSEI", min_days: int
             "skipped_fresh": sum(1 for r in rows if (today - r["run_date"]).days < min_days)}
 
 
+def _spearman(xs: list[float], ys: list[float]) -> float | None:
+    """Rank correlation — robust to the outliers and non-linearity that dominate return data."""
+    n = len(xs)
+    if n < 8:
+        return None
+
+    def ranks(v):
+        order = sorted(range(n), key=lambda i: v[i])
+        r = [0.0] * n
+        i = 0
+        while i < n:                      # average ties, or repeated scores skew the result
+            j = i
+            while j + 1 < n and v[order[j + 1]] == v[order[i]]:
+                j += 1
+            avg = (i + j) / 2 + 1
+            for k in range(i, j + 1):
+                r[order[k]] = avg
+            i = j + 1
+        return r
+
+    rx, ry = ranks(xs), ranks(ys)
+    mx, my = sum(rx) / n, sum(ry) / n
+    num = sum((a - mx) * (b - my) for a, b in zip(rx, ry))
+    dx = sum((a - mx) ** 2 for a in rx) ** 0.5
+    dy = sum((b - my) ** 2 for b in ry) ** 0.5
+    return round(num / (dx * dy), 2) if dx and dy else None
+
+
+def diagnose(res: list[dict]) -> str:
+    """Which component of the composite is actually driving the outcome?"""
+    L = ["", "WHY DOES THE COMPOSITE INVERT? — each input vs forward excess return",
+         "  (Spearman rank correlation: +1 predictive, 0 useless, -1 backwards)"]
+
+    fields = [("composite", lambda r: r.get("composite"))]
+    keys = sorted({k for r in res for k in (r.get("subscores") or {})})
+    fields += [(f"  subscore: {k}", (lambda k: lambda r: (r.get("subscores") or {}).get(k))(k))
+               for k in keys]
+    fields += [("raw pe", lambda r: r.get("pe")),
+               ("raw roce", lambda r: r.get("roce")),
+               ("raw market_cap", lambda r: r.get("market_cap"))]
+
+    for label, get in fields:
+        pairs = [(get(r), r["excess_pct"]) for r in res if get(r) is not None]
+        if len(pairs) < 8:
+            L.append(f"  {label:<24} (too few)")
+            continue
+        xs = [a for a, _ in pairs]
+        ys = [b for _, b in pairs]
+        rho = _spearman(xs, ys)
+        srt = sorted(pairs, key=lambda t: t[0], reverse=True)
+        half = len(srt) // 2
+        top = statistics.median([b for _, b in srt[:half]])
+        bot = statistics.median([b for _, b in srt[half:]])
+        arrow = "BACKWARDS" if (rho is not None and rho < -0.1) else (
+            "predictive" if (rho is not None and rho > 0.1) else "no signal")
+        L.append(f"  {label:<24} rho {str(rho):>6}   top-half {top:+6.1f}%  "
+                 f"bottom-half {bot:+6.1f}%   {arrow}")
+
+    by_sec = defaultdict(list)
+    for r in res:
+        by_sec[r.get("sector") or "(unknown)"].append(r["excess_pct"])
+    L += ["", "CONCENTRATION — is this one sector bet wearing a score?"]
+    for sec, ex in sorted(by_sec.items(), key=lambda kv: -len(kv[1])):
+        L.append(f"  {sec:<28} n={len(ex):<4} median excess {statistics.median(ex):+6.1f}%")
+    return "\n".join(L)
+
+
 def _summarise(label: str, rows: list[dict]) -> str:
     if not rows:
         return f"  {label:<26} (none)"
@@ -193,6 +265,24 @@ def report(rev: dict) -> str:
     for r in best[-5:]:
         L.append(f"  - {r['symbol']:<12} {r['run_date']}  {r['held_days']:>3}d  "
                  f"{r['ret_pct']:+7.1f}%  excess {r['excess_pct']:+7.1f}%")
+    # Robustness: the same names recur for weeks (WAAREERTL 13x), so n overstates independence.
+    # Keeping only each symbol's FIRST recommendation gives one vote per idea.
+    first: dict[str, dict] = {}
+    for r in sorted(res, key=lambda r: r["run_date"]):
+        first.setdefault(r["symbol"], r)
+    uniq = list(first.values())
+    L += ["", "ONE VOTE PER IDEA (first recommendation of each symbol only)",
+          "  Repeated picks of the same name are not independent evidence.",
+          _summarise("unique symbols", uniq)]
+    if len(uniq) >= 8:
+        su = sorted([r for r in uniq if r["composite"] is not None],
+                    key=lambda r: r["composite"], reverse=True)
+        h = len(su) // 2
+        L.append(_summarise("  top half by composite", su[:h]))
+        L.append(_summarise("  bottom half by composite", su[h:]))
+
+    L.append(diagnose(res))
+
     q = rev.get("quarantined") or []
     if q:
         L += ["", "QUARANTINED — price series looks unadjusted for a corporate action,",
