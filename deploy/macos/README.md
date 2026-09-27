@@ -109,6 +109,7 @@ Mini                                          NAS (separate UPS line)
 |---|---|---|---|
 | `watchdog.json` | `sma-watchdog.sh` | 20 min | 60 min (two misses) |
 | `morning-run.json` | `sma-job.sh` | weekdays | 90 h (clears a weekend) |
+| `weekly-screen.json` | `sma-job.sh` | Sundays 07:00 | 216 h (clears one missed week) |
 
 `intraday-run` deliberately does **not** heartbeat: it is gated to market hours, so its silence is
 normal and would alert daily. Each heartbeat carries `status` (`ok`/`fail`), so the NAS distinguishes
@@ -127,6 +128,14 @@ ssh home-nas '/volume1/homes/sharath/nas-deadman.sh; echo "exit: $?"'
 # prove it still fires (then let the next real heartbeat clear it)
 ssh home-nas 'touch -d "2 hours ago" /volume1/homes/sharath/sm-adviser-heartbeat/watchdog.json'
 ```
+
+**Delivery does NOT go through DSM notifications.** They were configured, the task ran, the script
+exited non-zero — and no mail arrived (2026-09-26). DSM's scheduler logs need root to diagnose, and
+an alarm must not depend on a path that cannot be tested. `nas-deadman.sh` now sends its own mail
+via `sma_sendmail.py` (python3 smtplib → Gmail), reading credentials from
+`~/.sma-deadman-mail.env` (chmod 600, never in git). It still exits non-zero, so DSM stays a second
+channel if it ever starts working — a duplicate alert beats none. Verified end to end: Gmail
+accepted the message.
 
 Install on the NAS: **DSM → Control Panel → Task Scheduler → Create → User-defined script**.
 Schedule: Daily, start 00:00, *Continue running within the same day*, repeat **every 20 minutes**,

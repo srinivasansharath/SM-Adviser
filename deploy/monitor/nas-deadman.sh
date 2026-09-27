@@ -11,11 +11,16 @@
 # LaunchAgent, so it died too and reported nothing — no mail, every state file still "ok". Silence
 # looked identical to health. This inverts that: silence IS the alarm.
 #
-# DELIVERY: exits non-zero with the report on stdout. Install via DSM Control Panel ->
-# Task Scheduler -> Create -> User-defined script, every 15-20 min, and tick
-# "Send run details by email" + "only when the script terminates abnormally".
-# DSM then mails the output using its own notification settings — so no SMTP config and no
-# credentials are needed on the NAS.
+# DELIVERY: sends its own email via sma_sendmail.py, and ALSO exits non-zero.
+#
+# It used to rely solely on DSM's "send run details when the script terminates abnormally". On
+# 2026-09-26 that was configured, the task ran, the script exited non-zero — and no mail arrived.
+# DSM's scheduler logs need root to diagnose, and an alarm must not depend on a delivery path that
+# cannot be tested. Sending directly means the send can be verified end to end (and it was: Gmail
+# accepted the message). The non-zero exit is kept so DSM remains a second channel if it ever
+# starts working; a duplicate alert is vastly better than none.
+#
+# Credentials live in ~/.sma-deadman-mail.env (chmod 600), never in this repo.
 #
 # Thresholds are deliberately tolerant: one missed heartbeat must not page anyone.
 #
@@ -37,6 +42,10 @@ WATCHDOG_MAX_MIN="${WATCHDOG_MAX_MIN:-60}"
 # morning-run is Mon-Fri, so the gap across a weekend is ~72h. 90h clears it, matching
 # STALE_HOURS in the on-box watchdog.
 MORNING_MAX_HOURS="${MORNING_MAX_HOURS:-90}"
+# weekly-screen runs Sunday 07:00. 9 days tolerates one missed week without crying wolf, while
+# still catching a screener that has quietly stopped (the shortlist would otherwise just go stale
+# and nobody would notice).
+WEEKLY_MAX_HOURS="${WEEKLY_MAX_HOURS:-216}"
 
 problems=()
 
@@ -76,8 +85,9 @@ check() {  # check <name> <max_age_seconds> <human_window>
   fi
 }
 
-check watchdog     $(( WATCHDOG_MAX_MIN * 60 ))    "${WATCHDOG_MAX_MIN}m"
-check morning-run  $(( MORNING_MAX_HOURS * 3600 )) "${MORNING_MAX_HOURS}h"
+check watchdog      $(( WATCHDOG_MAX_MIN * 60 ))    "${WATCHDOG_MAX_MIN}m"
+check morning-run   $(( MORNING_MAX_HOURS * 3600 )) "${MORNING_MAX_HOURS}h"
+check weekly-screen $(( WEEKLY_MAX_HOURS * 3600 ))  "${WEEKLY_MAX_HOURS}h"
 
 STATE="$STATE_DIR/last_alert"
 
@@ -104,11 +114,16 @@ fi
 echo "$now" > "$STATE" 2>/dev/null
 
 if [ "$last_alert" -gt 0 ]; then
-  echo "SM Adviser dead-man's switch STILL TRIPPED on $(hostname) at $(date '+%F %T %Z')"
-  echo "(reminder — first reported $(( since / 3600 ))h ago; repeats every ${REMIND_HOURS}h until fixed)"
+  SUBJECT="SM Adviser ALERT (reminder): still tripped after $(( since / 3600 ))h"
+  HEADER="SM Adviser dead-man's switch STILL TRIPPED on $(hostname) at $(date '+%F %T %Z')
+(reminder — first reported $(( since / 3600 ))h ago; repeats every ${REMIND_HOURS}h until fixed)"
 else
-  echo "SM Adviser dead-man's switch tripped on $(hostname) at $(date '+%F %T %Z')." 
+  SUBJECT="SM Adviser ALERT: the Mac Mini stopped reporting in"
+  HEADER="SM Adviser dead-man's switch tripped on $(hostname) at $(date '+%F %T %Z')."
 fi
+
+{
+echo "$HEADER"
 echo
 printf '  - %s\n' "${problems[@]}"
 echo
@@ -124,4 +139,19 @@ echo "     the Mini is fine. Check: ssh mini 'ls /Volumes/home >/dev/null && ech
 echo
 echo "Heartbeat directory on this NAS: $DIR"
 ls -la "$DIR" 2>/dev/null | sed 's/^/  /'
+} > "$STATE_DIR/last_report.txt"
+cat "$STATE_DIR/last_report.txt"      # DSM still sees the report on stdout
+
+# Send it ourselves rather than trusting DSM (see DELIVERY above).
+SENDER="${SENDMAIL_BIN:-$HOME/sma_sendmail.py}"
+if [ -x "$SENDER" ]; then
+  if python3 "$SENDER" "$SUBJECT" < "$STATE_DIR/last_report.txt" >>"$STATE_DIR/send.log" 2>&1; then
+    echo "(alert emailed)" >> "$STATE_DIR/send.log"
+  else
+    echo "ALERT COULD NOT BE EMAILED — see $STATE_DIR/send.log" >&2
+  fi
+else
+  echo "no sender at $SENDER — relying on DSM notification only" >&2
+fi
+
 exit 1
