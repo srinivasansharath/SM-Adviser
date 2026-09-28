@@ -21,7 +21,8 @@ app/
   connectors/             # swappable interfaces + impls: portfolio (mock|zerodha), market_data
                           #   (yfinance), order_flow (nse), fundamentals (screener)
   auth/kite_login.py      # daily Kite access-token: cached-per-day + headless TOTP login
-  analytics/              # technicals.py, fundamentals.py, order_flow.py (pure functions)
+  analytics/              # technicals.py, fundamentals.py, order_flow.py, market.py (pure
+                          #   functions; market.py = index moves + portfolio-vs-benchmark delta)
   reasoning/              # scoring.py (6 sub-scores→composite→bands+hysteresis + deterministic
                           #   price_trigger), theses.py (DB-authoritative; export_theses.py dumps
                           #   back to theses.yaml),
@@ -76,6 +77,12 @@ its `$HOME` mount must be **writable** (`--mount "$HOME/sm-adviser:w"`) or every
   in `score_holding` before any LLM runs, forcing Exit-Candidate. Price rules belong in the latter —
   a stop that depends on a model's daily reading is not a stop.
 - **order_flow returns 0** from datacenter IPs (NSE anti-bot); harmless, confirmation-only.
+- **Market context** (`widget.json.market`) answers "is everything red, or just my stocks?".
+  Kite's `quote()` returns **`net_change` = 0 for indices**, so the day change must come from
+  `last_price` vs `ohlc.close`. The pre-open morning run uses yfinance candles (last session
+  close-to-close, matching what Kite's holdings day-change shows at 08:00); the intraday job
+  re-quotes indices through Kite so the comparison is on the same tick as the holdings.
+  Benchmarks come from `config.yaml` `portfolio.benchmarks.broad` — adding one is a config line.
 - **The app requires HTTPS** (ATS enforced); serve via Tailscale (`tailscale serve --https=8443 8787`).
   On macOS use the **Homebrew `tailscale` formula** (`sudo brew services start tailscale`) — the
   `.pkg`/App Store builds gate `tailscaled` behind a GUI-approved network extension. Under `sudo`,
