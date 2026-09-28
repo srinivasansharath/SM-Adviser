@@ -12,6 +12,9 @@ no "for sure", no promised price targets, no "multibagger". Bounded language onl
 - Use only these action labels: Hold, Watch, Accumulate Candidate, Trim Candidate, Exit Candidate.
 - A falling PRICE is not a sell signal; falling FUNDAMENTALS or a broken THESIS are. Explicitly \
 distinguish a temporary price dip (hold a quality business) from genuine thesis impairment (exit).
+- Read today's moves against the `market` block (benchmark index moves for the same session). \
+When a holding moved roughly with the market, say so instead of inventing a company-specific \
+cause; reserve stock-specific explanations for stock-specific moves.
 - Judge each holding's thesis by evaluating its exit_if conditions against the evidence provided \
 (scores, technicals, fundamentals, and recent_filings — official BSE corporate announcements). A \
 material filing (management/auditor change, credit-rating action, litigation, SEBI/exchange action, \
@@ -44,6 +47,8 @@ def _holding_view(r: dict, meta: dict, fund: dict, news: list | None = None) -> 
         "classification": r.get("classification"),
         "confidence": r.get("confidence"),
         "weight_pct": r.get("weight_pct"),
+        # Today's move, so a holding can be read against the `market` block's index moves.
+        "day_change_pct": r.get("day_change_pct"),
         "ret_20d": r.get("ret_20d"),
         "rel_strength_vs_nifty": r.get("rel_strength"),
         "rsi": r.get("rsi"),
@@ -71,7 +76,8 @@ def build_user_prompt(data: dict, theses: dict, fundamentals_data: dict | None,
                       (news_data or {}).get(r["symbol"]))
         for r in data["holdings"]
     ]
-    payload = {"as_of": data["run_date"], "portfolio": data["portfolio"], "holdings": holdings}
+    payload = {"as_of": data["run_date"], "portfolio": data["portfolio"],
+               "market": data.get("market"), "holdings": holdings}
     return (
         "Today's scored portfolio (a deterministic engine already classified each holding). "
         "Evaluate each holding's thesis by checking its exit_if conditions against the evidence, "

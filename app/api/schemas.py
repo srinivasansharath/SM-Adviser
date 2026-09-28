@@ -27,6 +27,21 @@ class PortfolioOut(BaseModel):
     attention_count: int | None = None
 
 
+class IndexOut(BaseModel):
+    name: str                             # e.g. "NIFTY 50"
+    ltp: float | None = None
+    day_change_pct: float | None = None
+
+
+class MarketOut(BaseModel):
+    """How the broad market moved over the same window as `portfolio.day_change_pct`."""
+
+    benchmark: str | None = None          # the primary index, = indices[0].name
+    indices: list[IndexOut] = []
+    vs_market_pct: float | None = None    # portfolio day % - primary index day %
+    source: str | None = None             # zerodha (live quote) | yfinance (last close)
+
+
 class HoldingOut(BaseModel):
     symbol: str
     name: str | None = None
@@ -49,6 +64,7 @@ class WidgetPayload(BaseModel):
     prices_as_of: str | None = None
     headline: str | None = None
     portfolio: PortfolioOut
+    market: MarketOut | None = None
     holdings: list[HoldingOut]
     disclaimer: str | None = None
 

@@ -62,6 +62,7 @@ struct DashboardView: View {
                                 .foregroundStyle((data.portfolio.dayChangePct ?? 0) >= 0 ? .green : .red)
                         }
                     }
+                    MarketLine(market: data.market, size: 12, allIndices: true)
                     if let h = data.headline { Text(h).font(.footnote).foregroundStyle(.secondary) }
                     HStack(spacing: 6) {
                         if let updatedAt {

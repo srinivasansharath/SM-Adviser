@@ -22,4 +22,5 @@ FEATURES = [
     "thesis_editing",  # GET /theses, PUT /theses/{symbol}
     "news",            # corporate-announcement filings feed scoring + the analysis page
     "screening",       # GET /candidates(.json) — weekly new-stock buy-candidate shortlist
+    "market_context",  # widget.json carries a `market` block (index moves + vs-market delta)
 ]

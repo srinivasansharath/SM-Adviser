@@ -18,6 +18,8 @@ YF_INDEX_MAP = {
     "NIFTY 500": "^CRSLDX",
     "NIFTY BANK": "^NSEBANK",
     "NIFTY IT": "^CNXIT",
+    "NIFTY MIDCAP 100": "^CNXMID",
+    "NIFTY SMALLCAP 100": "^CNXSC",
 }
 
 

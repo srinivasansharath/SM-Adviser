@@ -64,6 +64,10 @@ def build_widget(data: dict, as_of: str | None = None, narrative: dict | None = 
             "total_return_pct": p.get("total_return_pct"),
             "attention_count": p["attention_count"],
         },
+        # Market context: how the benchmarks moved over the same window, plus the portfolio's
+        # move relative to the primary one. Answers "is everything red, or just me?".
+        # Optional — absent when no market-data source ran; the app treats it as missing.
+        "market": data.get("market"),
         "holdings": holdings,
         "disclaimer": _DISCLAIMER,
     })

@@ -16,13 +16,14 @@ shares them with the widget via an **App Group**.
 | `Shared/WidgetModels.swift` | ✅ | ✅ |
 | `Shared/PortfolioService.swift` | ✅ | ✅ |
 | `Shared/Styles.swift` | ✅ | ✅ |
+| `Shared/MarketView.swift` (portfolio-vs-index line) | ✅ | ✅ |
 | `App/SMAdviserApp.swift` | ✅ | — |
 | `App/ContentView.swift` (dashboard + branching) | ✅ | — |
 | `App/SetupView.swift` (connect-to-server screen) | ✅ | — |
 | `Widget/PortfolioWidget.swift` | — | ✅ |
 | `Widget/WidgetViews.swift` | — | ✅ |
 
-The four `Shared/` files go in **both** targets (File Inspector → Target Membership).
+The `Shared/` files go in **both** targets (File Inspector → Target Membership).
 
 ## Prerequisites
 - **Xcode** (on the Mac mini), an **iPhone**, an **Apple Developer account** ($99/yr for a widget

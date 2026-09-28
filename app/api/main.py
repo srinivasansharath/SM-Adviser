@@ -19,7 +19,7 @@ from ..reasoning.theses import upsert_thesis
 from ..reports.candidates_page import render_candidates_page
 from ..reports.widget_json import json_safe
 from ..storage.db import default_session_factory
-from .schemas import CandidateOut, CandidatesOut, Meta, ThesisOut, ThesisUpsert
+from .schemas import CandidateOut, CandidatesOut, Meta, ThesisOut, ThesisUpsert, WidgetPayload
 from .version import API_VERSION, FEATURES, MIN_APP_BUILD, SERVER_VERSION
 
 _METRIC_KEYS = ("roe", "roe_5y", "roce", "sales_cagr_5y", "profit_cagr_5y", "pe",
@@ -109,7 +109,10 @@ def meta() -> Meta:
     )
 
 
-@app.get("/widget.json")
+# `responses` documents the payload in openapi.json without FastAPI filtering the response
+# through the model — a response_model here would silently DROP every field the model doesn't
+# declare (rel_strength, flag_reason, ...) and break the app.
+@app.get("/widget.json", responses={200: {"model": WidgetPayload}})
 def widget(_: None = Depends(require_auth), output_dir: Path = Depends(get_output_dir)):
     path = output_dir / "widget.json"
     if not path.exists():

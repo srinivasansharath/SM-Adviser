@@ -32,6 +32,13 @@ class ZerodhaConnector(PortfolioConnector):
     def get_holdings(self) -> list[dict]:
         return list(self._client().holdings())
 
+    def get_quotes(self, instruments: list[str]) -> dict:
+        # `quote` is a read endpoint, so it passes ReadOnlyKite untouched. Indices are valid
+        # instruments here ("NSE:NIFTY 50"), which is how market context stays on the same feed.
+        if not instruments:
+            return {}
+        return dict(self._client().quote(instruments))
+
     def get_positions(self) -> list[dict]:
         pos = self._client().positions()
         # Kite returns {"net": [...], "day": [...]}; long-term view uses net.

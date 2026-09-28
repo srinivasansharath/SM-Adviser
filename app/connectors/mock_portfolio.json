@@ -36,5 +36,15 @@
       "pnl": -10715.00, "day_change": -15.15, "day_change_percentage": -2.41
     }
   ],
-  "positions": []
+  "positions": [],
+  "quotes": {
+    "NSE:NIFTY 50": {
+      "instrument_token": 256265, "last_price": 24890.10,
+      "ohlc": {"open": 25010.00, "high": 25022.45, "low": 24851.30, "close": 25045.35}
+    },
+    "NSE:NIFTY 500": {
+      "instrument_token": 268041, "last_price": 22712.40,
+      "ohlc": {"open": 22860.00, "high": 22871.10, "low": 22690.05, "close": 22884.05}
+    }
+  }
 }

@@ -79,6 +79,8 @@ struct PortfolioHeader: View {
             VStack(alignment: .leading, spacing: 1) {
                 Text("SM Adviser").font(.system(size: 10, weight: .bold)).foregroundStyle(.secondary)
                 Text("₹\(Int(data.portfolio.value).formatted())").font(.system(size: 17, weight: .bold, design: .rounded))
+                // Is everything red, or just my stocks? Answered without leaving the home screen.
+                MarketLine(market: data.market)
             }
             Spacer()
             VStack(alignment: .trailing, spacing: 1) {
@@ -126,6 +128,7 @@ struct SmallView: View {
                     .font(.system(size: 11, weight: .bold, design: .rounded))
                     .foregroundStyle(tr >= 0 ? .green : .red)
             }
+            MarketLine(market: data.market, size: 10, compact: true)
             Spacer(minLength: 2)
             if let a = data.portfolio.attentionCount {
                 Text(a > 0 ? "\(a) need attention" : "All clear")

@@ -25,6 +25,51 @@
         }
       }
     },
+    "/status": {
+      "get": {
+        "summary": "Status",
+        "description": "Operational health (authed): per-connector status from the latest run + cumulative LLM\ntoken/cost spend, with an optional monthly-budget flag. Lets the operator (and the watchdog)\nspot a stalled connector \u2014 e.g. BSE blacklisting the NUC's IP \u2014 and know when to recharge.",
+        "operationId": "status_status_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/meta": {
       "get": {
         "summary": "Meta",
@@ -71,7 +116,9 @@
             "description": "Successful Response",
             "content": {
               "application/json": {
-                "schema": {}
+                "schema": {
+                  "$ref": "#/components/schemas/WidgetPayload"
+                }
               }
             }
           },
@@ -251,6 +298,100 @@
         }
       }
     },
+    "/candidates.json": {
+      "get": {
+        "summary": "Candidates Json",
+        "description": "The latest weekly new-stock shortlist as structured JSON (app renders it natively).",
+        "operationId": "candidates_json_candidates_json_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CandidatesOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/candidates": {
+      "get": {
+        "summary": "Candidates Html",
+        "description": "The latest weekly shortlist as a one-pager (shown in the app's web view).",
+        "operationId": "candidates_html_candidates_get",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "text/html": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/stock/{symbol}": {
       "get": {
         "summary": "Stock Analysis",
@@ -309,6 +450,197 @@
   },
   "components": {
     "schemas": {
+      "CandidateOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "rank": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Rank"
+          },
+          "composite": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Composite"
+          },
+          "sector": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sector"
+          },
+          "industry": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Industry"
+          },
+          "buckets": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Buckets",
+            "default": []
+          },
+          "verdict": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Verdict"
+          },
+          "conviction": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conviction"
+          },
+          "thesis": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thesis"
+          },
+          "tailwind": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tailwind"
+          },
+          "exit_if": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Exit If",
+            "default": []
+          },
+          "risks": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Risks",
+            "default": []
+          },
+          "subscores": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Subscores",
+            "default": {}
+          },
+          "metrics": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metrics",
+            "default": {}
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol"
+        ],
+        "title": "CandidateOut"
+      },
+      "CandidatesOut": {
+        "properties": {
+          "api_version": {
+            "type": "integer",
+            "title": "Api Version"
+          },
+          "run_date": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Run Date"
+          },
+          "universe": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Universe"
+          },
+          "candidates": {
+            "items": {
+              "$ref": "#/components/schemas/CandidateOut"
+            },
+            "type": "array",
+            "title": "Candidates",
+            "default": []
+          },
+          "disclaimer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disclaimer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "api_version"
+        ],
+        "title": "CandidatesOut"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -321,6 +653,234 @@
         },
         "type": "object",
         "title": "HTTPValidationError"
+      },
+      "HoldingOut": {
+        "properties": {
+          "symbol": {
+            "type": "string",
+            "title": "Symbol"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "ltp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ltp"
+          },
+          "change_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Change Pct"
+          },
+          "ret_20d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ret 20D"
+          },
+          "ret_252d": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ret 252D"
+          },
+          "return_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Return Pct"
+          },
+          "pnl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pnl"
+          },
+          "classification": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Classification"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "thesis_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thesis Status"
+          },
+          "thesis_feedback": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Thesis Feedback"
+          },
+          "flag": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Flag"
+          }
+        },
+        "type": "object",
+        "required": [
+          "symbol"
+        ],
+        "title": "HoldingOut"
+      },
+      "IndexOut": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "ltp": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ltp"
+          },
+          "day_change_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day Change Pct"
+          }
+        },
+        "type": "object",
+        "required": [
+          "name"
+        ],
+        "title": "IndexOut"
+      },
+      "MarketOut": {
+        "properties": {
+          "benchmark": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Benchmark"
+          },
+          "indices": {
+            "items": {
+              "$ref": "#/components/schemas/IndexOut"
+            },
+            "type": "array",
+            "title": "Indices",
+            "default": []
+          },
+          "vs_market_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vs Market Pct"
+          },
+          "source": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source"
+          }
+        },
+        "type": "object",
+        "title": "MarketOut",
+        "description": "How the broad market moved over the same window as `portfolio.day_change_pct`."
       },
       "Meta": {
         "properties": {
@@ -352,6 +912,67 @@
           "min_app_build"
         ],
         "title": "Meta"
+      },
+      "PortfolioOut": {
+        "properties": {
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Value"
+          },
+          "day_change_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Day Change Pct"
+          },
+          "total_pnl": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Pnl"
+          },
+          "total_return_pct": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Return Pct"
+          },
+          "attention_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attention Count"
+          }
+        },
+        "type": "object",
+        "title": "PortfolioOut"
       },
       "ThesisOut": {
         "properties": {
@@ -406,6 +1027,28 @@
             "type": "array",
             "title": "Exit If",
             "default": []
+          },
+          "stop_below": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Below"
+          },
+          "take_above": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Take Above"
           },
           "symbol": {
             "type": "string",
@@ -483,6 +1126,28 @@
             "type": "array",
             "title": "Exit If",
             "default": []
+          },
+          "stop_below": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Stop Below"
+          },
+          "take_above": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Take Above"
           }
         },
         "type": "object",
@@ -527,6 +1192,85 @@
           "type"
         ],
         "title": "ValidationError"
+      },
+      "WidgetPayload": {
+        "properties": {
+          "api_version": {
+            "type": "integer",
+            "title": "Api Version"
+          },
+          "as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "As Of"
+          },
+          "prices_as_of": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Prices As Of"
+          },
+          "headline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Headline"
+          },
+          "portfolio": {
+            "$ref": "#/components/schemas/PortfolioOut"
+          },
+          "market": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/MarketOut"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "holdings": {
+            "items": {
+              "$ref": "#/components/schemas/HoldingOut"
+            },
+            "type": "array",
+            "title": "Holdings"
+          },
+          "disclaimer": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Disclaimer"
+          }
+        },
+        "type": "object",
+        "required": [
+          "api_version",
+          "portfolio",
+          "holdings"
+        ],
+        "title": "WidgetPayload"
       }
     }
   }

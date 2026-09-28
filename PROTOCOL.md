@@ -35,7 +35,7 @@ Open (no auth), like `/health`. The app calls it on connect to adapt gracefully.
 {
   "api_version": 2,
   "server_version": "2.0.0",
-  "features": ["widget", "stock_analysis", "full_report", "intraday"],
+  "features": ["widget", "stock_analysis", "full_report", "intraday", "market_context"],
   "min_app_build": 1
 }
 ```
@@ -65,8 +65,16 @@ contract is **`widget.json`** (+ `/meta`).
 
 ### `widget.json` shape (the structured contract)
 Full schema in `docs/openapi.json` (`WidgetPayload`). Key fields:
-- Top level: `api_version`, `as_of`, `prices_as_of?`, `headline?`, `portfolio`, `holdings[]`, `disclaimer`.
+- Top level: `api_version`, `as_of`, `prices_as_of?`, `headline?`, `portfolio`, `market?`,
+  `holdings[]`, `disclaimer`.
 - `portfolio`: `value`, `day_change_pct?`, `total_pnl?`, `total_return_pct?`, `attention_count?`.
+- `market?` (feature `market_context`) — how the broad market moved over the same window, so a
+  red portfolio can be told apart from a red market:
+  `{benchmark?, indices: [{name, ltp?, day_change_pct?}], vs_market_pct?, source?}`.
+  `vs_market_pct` = `portfolio.day_change_pct` − `indices[0].day_change_pct` (+ = outperforming).
+  `source` is `zerodha` (live index quote, same tick as the holdings) or `yfinance` (last close,
+  which is what the pre-open morning run has). The whole block is absent when no market-data
+  source ran, so clients must tolerate it missing.
 - each holding: `symbol`, `name?`, `ltp?`, `change_pct?` (today), `ret_20d?` (1M), `ret_252d?` (1Y),
   `return_pct?` (since buy), `pnl?`, `classification?`, `confidence?`, `thesis_status?`, `flag?`.
 - All numeric fields may be `null`; the server never emits `NaN`/`Inf`.

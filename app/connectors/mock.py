@@ -23,3 +23,7 @@ class MockConnector(PortfolioConnector):
 
     def get_positions(self) -> list[dict]:
         return list(self._data.get("positions", []))
+
+    def get_quotes(self, instruments: list[str]) -> dict:
+        quotes = self._data.get("quotes") or {}
+        return {k: quotes[k] for k in instruments if k in quotes}

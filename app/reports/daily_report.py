@@ -39,6 +39,23 @@ def _needs_attention(r: dict) -> bool:
     return r["flag"] != "ok"
 
 
+def _market_line(data: dict) -> str:
+    """"NIFTY 50 -1.92%, NIFTY 500 -2.10% · portfolio +0.52% vs NIFTY 50" — the baseline a red
+    day is read against. Empty string when no market-data source ran."""
+    market = data.get("market") or {}
+    indices = market.get("indices") or []
+    if not indices:
+        return ""
+    def pct(v) -> str:
+        return "—" if v is None else f"{v:+.2f}%"   # signed, like the day-change above it
+
+    moves = ", ".join(f"{i['name']} {pct(i.get('day_change_pct'))}" for i in indices)
+    vs = market.get("vs_market_pct")
+    if vs is None:
+        return moves
+    return f"{moves} · portfolio {vs:+.2f}% vs {market.get('benchmark') or indices[0]['name']}"
+
+
 def _reasons(r: dict) -> str:
     txt = r.get("rec_reason") or "; ".join(r.get("reasons") or [])
     return txt or "None"
@@ -73,6 +90,8 @@ def build_markdown(data: dict, narrative: dict | None = None) -> str:
     if p["fii_net"] is not None or p["dii_net"] is not None:
         fdi = f" · FII net ₹{_f(p['fii_net'], 0)} cr · DII net ₹{_f(p['dii_net'], 0)} cr"
     L.append(f"- Top-5 concentration **{p['top5_pct']:.0f}%**{fdi}")
+    if _market_line(data):
+        L.append(f"- Market: {_market_line(data)}")
     L.append("")
 
     attention = [r for r in rows if _needs_attention(r)]
@@ -160,6 +179,7 @@ def build_html(data: dict, narrative: dict | None = None) -> str:
         "<h2>Summary</h2><ul>",
         f"<li>Value <b>₹{p['value']:,.0f}</b>, P&amp;L <b>₹{p['total_pnl']:,.0f}</b>, day <b>{day}</b></li>",
         f"<li><b>{p['attention_count']}</b>/{p['holdings_count']} need attention · top-5 {p['top5_pct']:.0f}%</li>",
+        (f"<li>Market: {_market_line(data)}</li>" if _market_line(data) else ""),
         "</ul>",
         "<h2>Holdings</h2>",
         "<table><tr><th>Symbol</th><th>LTP</th><th>Day%</th><th>20D%</th><th>vsNIFTY</th>"

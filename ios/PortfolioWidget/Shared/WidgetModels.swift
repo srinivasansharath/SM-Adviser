@@ -6,6 +6,7 @@ struct WidgetData: Codable {
     let pricesAsOf: String?   // set by the intraday refresh; nil on a fresh daily-only run
     let headline: String?
     let portfolio: Portfolio
+    let market: Market?       // absent on a server without market context (feature: market_context)
     let holdings: [Holding]
 
     static let sample = WidgetData(
@@ -13,6 +14,13 @@ struct WidgetData: Codable {
         pricesAsOf: "2026-07-13T12:34:00+05:30",
         headline: "Portfolio concentrated; two names on watch.",
         portfolio: Portfolio(value: 291881, dayChangePct: 1.28, totalPnl: 126934, totalReturnPct: 76.9, attentionCount: 3),
+        market: Market(
+            benchmark: "NIFTY 50",
+            indices: [MarketIndex(name: "NIFTY 50", ltp: 24890.1, dayChangePct: 0.86),
+                      MarketIndex(name: "NIFTY 500", ltp: 22712.4, dayChangePct: 0.61)],
+            vsMarketPct: 0.42,
+            source: "zerodha"
+        ),
         holdings: [
             Holding(symbol: "YESBANK", name: "Yes Bank", ltp: 23.9, changePct: 1.23, ret20d: 4.1, ret252d: 32.0, returnPct: 88.4, pnl: 42300, classification: "Hold", confidence: "High", thesisStatus: "watch", flag: "risk", flagReason: nil),
             Holding(symbol: "TATACHEM", name: "Tata Chemicals", ltp: 721.0, changePct: 1.03, ret20d: -3.2, ret252d: -14.5, returnPct: 148.2, pnl: 46600, classification: "Exit Candidate", confidence: "High", thesisStatus: "impaired", flag: "risk", flagReason: nil),
@@ -29,6 +37,24 @@ struct Portfolio: Codable {
     let totalPnl: Double?
     let totalReturnPct: Double?   // return since purchase, whole portfolio
     let attentionCount: Int?
+}
+
+/// One benchmark's move over the same window as `Portfolio.dayChangePct`.
+struct MarketIndex: Codable, Identifiable {
+    var id: String { name }
+    let name: String
+    let ltp: Double?
+    let dayChangePct: Double?
+}
+
+/// Market context: what the broad market did today, so a red portfolio can be read correctly.
+struct Market: Codable {
+    let benchmark: String?      // the primary index (= indices.first)
+    let indices: [MarketIndex]?
+    let vsMarketPct: Double?    // portfolio day % - primary index day %; + = outperforming
+    let source: String?         // zerodha (live quote) | yfinance (last close)
+
+    var list: [MarketIndex] { indices ?? [] }
 }
 
 struct Holding: Codable, Identifiable {

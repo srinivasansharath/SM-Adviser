@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date
 
+from ..analytics.market import with_vs_market
 from ..analytics.news import has_negative_news, material_items
 from ..storage.models import Holding, MarketFlow, Metric, OrderFlow, Recommendation, Score, Snapshot
 from .signals import evaluate_flags
@@ -44,6 +45,11 @@ def gather_report_data(session, run_date: date, config: dict) -> dict:
 
     nsnap = session.query(Snapshot).filter_by(run_date=run_date, kind="news").first()
     news = nsnap.payload if nsnap and isinstance(nsnap.payload, dict) else {}
+
+    # How the broad market moved (frozen by the morning run) — the baseline a red day is read
+    # against. Copied, not referenced, so adding vs_market_pct can't dirty the ORM row.
+    msnap = session.query(Snapshot).filter_by(run_date=run_date, kind="market").first()
+    market = dict(msnap.payload) if msnap and isinstance(msnap.payload, dict) else None
 
     nasnap = session.query(Snapshot).filter_by(run_date=run_date, kind="news_assessment").first()
     news_assessment = nasnap.payload if nasnap and isinstance(nasnap.payload, dict) else {}
@@ -108,6 +114,7 @@ def gather_report_data(session, run_date: date, config: dict) -> dict:
             acc += v * dc
             wsum += v
     day_change_pct = round(acc / wsum, 2) if wsum else None
+    market = with_vs_market(market, day_change_pct)
 
     # "Needs attention" prefers the classification when present, else the technical flag.
     def needs_attention(r: dict) -> bool:
@@ -131,5 +138,6 @@ def gather_report_data(session, run_date: date, config: dict) -> dict:
             "fii_net": market_flow.fii_net if market_flow else None,
             "dii_net": market_flow.dii_net if market_flow else None,
         },
+        "market": market,
         "holdings": rows,
     }

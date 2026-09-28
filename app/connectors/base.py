@@ -32,3 +32,12 @@ class PortfolioConnector(ABC):
     @abstractmethod
     def get_positions(self) -> list[dict]:
         """Return intraday/short-term positions (Kite `positions()` shape)."""
+
+    def get_quotes(self, instruments: list[str]) -> dict:
+        """Live quotes keyed by "EXCHANGE:TRADINGSYMBOL" (Kite `quote()` shape).
+
+        Optional, and deliberately not abstract: a connector with no quote feed returns {} and
+        callers fall back to their end-of-day source rather than failing. Used for index quotes,
+        so the market comparison comes off the same tick as the holdings prices.
+        """
+        return {}

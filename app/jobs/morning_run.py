@@ -17,6 +17,7 @@ from pathlib import Path
 
 from sqlalchemy.orm import sessionmaker
 
+from ..analytics.market import benchmark_names, build_market, index_from_candles
 from ..analytics.order_flow import compute_delivery_signal
 from ..analytics.technicals import compute_metrics
 from ..config import get_settings, load_yaml_config
@@ -49,19 +50,59 @@ def _lookback(config: dict) -> int:
     return int((config.get("analytics") or {}).get("lookback_trading_days", 24))
 
 
+def _fetch_index_candles(market_data: MarketDataConnector, config: dict, days: int) -> dict[str, list[dict]]:
+    """Daily candles per configured benchmark, fetched once and shared by the two consumers:
+    rel-strength (primary index only) and the market-context block (all of them)."""
+    out: dict[str, list[dict]] = {}
+    for name in benchmark_names(config):
+        try:
+            out[name] = market_data.get_index_candles(name, days) or []
+        except Exception:
+            out[name] = []  # one unreachable index must not sink the run
+    return out
+
+
+def _store_market_context(
+    session_factory: sessionmaker,
+    run_date: date,
+    index_candles: dict[str, list[dict]],
+    source: str,
+) -> dict | None:
+    """Freeze how the broad market moved last session, so the widget can answer "is it just me?".
+
+    End-of-day close-to-close is the correct window here: the morning run fires before the open,
+    when Kite's own holdings day-change is also still the previous session's.
+    """
+    market = build_market(
+        [index_from_candles(name, candles) for name, candles in index_candles.items()], source
+    )
+    if not market:
+        return None
+    with session_factory() as session:
+        session.query(Snapshot).filter(
+            Snapshot.run_date == run_date, Snapshot.kind == "market"
+        ).delete()
+        session.add(
+            Snapshot(run_date=run_date, kind="market", source=source,
+                     payload=market, fetched_at=datetime.now(timezone.utc))
+        )
+        session.commit()
+    return market
+
+
 def _store_metrics(
     session_factory: sessionmaker,
     run_date: date,
     holdings: list[dict],
     market_data: MarketDataConnector,
     config: dict,
+    index_candles: dict[str, list[dict]] | None = None,
 ) -> int:
     candle_days = max(_lookback(config) + 5, _MA_HISTORY_DAYS)
-    benchmarks = ((config.get("portfolio") or {}).get("benchmarks") or {}).get("broad") or ["NIFTY 50"]
-    try:
-        index_candles = market_data.get_index_candles(benchmarks[0], candle_days)
-    except Exception:
-        index_candles = None
+    if index_candles is None:
+        index_candles = _fetch_index_candles(market_data, config, candle_days)
+    # rel-strength is measured against the primary benchmark only.
+    bench_candles = index_candles.get(benchmark_names(config)[0]) or None
 
     count = 0
     with session_factory() as session:
@@ -74,7 +115,7 @@ def _store_metrics(
                 continue  # one bad symbol shouldn't sink the whole run
             if not candles:
                 continue
-            session.add(Metric(run_date=run_date, symbol=symbol, **compute_metrics(candles, index_candles)))
+            session.add(Metric(run_date=run_date, symbol=symbol, **compute_metrics(candles, bench_candles)))
             count += 1
         session.commit()
     return count
@@ -302,7 +343,13 @@ def run(
 
     metrics_count = 0
     if market_data is not None:
-        metrics_count = _store_metrics(session_factory, run_date, holdings, market_data, config)
+        candles = _fetch_index_candles(
+            market_data, config, max(_lookback(config) + 5, _MA_HISTORY_DAYS)
+        )
+        metrics_count = _store_metrics(
+            session_factory, run_date, holdings, market_data, config, candles
+        )
+        _store_market_context(session_factory, run_date, candles, market_data.name)
 
     order_flow_count = 0
     if order_flow is not None:

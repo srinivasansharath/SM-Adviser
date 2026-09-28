@@ -14,6 +14,7 @@
 		3A8335AF513006DDC074918E /* PortfolioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D0CB050AF84EFAF3193DAB0 /* PortfolioService.swift */; };
 		4851D8C3B19CE02D13A245DC /* ThesisEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9D480A7D2DE68CA34C078AB /* ThesisEditorView.swift */; };
 		4969FC5A3D04E453BDE575A3 /* StockDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 005CD0C9D3CAAD59DB2A0BD9 /* StockDetailView.swift */; };
+		4BC04D84CF868375FE48EB42 /* MarketView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D18242E828A581F683A2BC53 /* MarketView.swift */; };
 		4BF0E79ABF7AD59697347F86 /* HealthView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A5165C91C14AA0D8A5087F5 /* HealthView.swift */; };
 		511F03699104EE0EC2EA20F5 /* PortfolioService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7D0CB050AF84EFAF3193DAB0 /* PortfolioService.swift */; };
 		5A21912D49DABE888817049D /* DemoStock.html in Resources */ = {isa = PBXBuildFile; fileRef = 5FB4E7B631B9E72C35867CF4 /* DemoStock.html */; };
@@ -24,6 +25,7 @@
 		84E55C1BF8168325AD9AB085 /* WidgetViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC0B4B7BE865B8CDB01A81A6 /* WidgetViews.swift */; };
 		87F56D0538CA795D52CE5053 /* CandidateModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF0A0C34F996D1FB7B6BD4BF /* CandidateModels.swift */; };
 		92612598AB42BCCC9988F75D /* SetupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26301F47DD22AF4766C1EDA1 /* SetupView.swift */; };
+		991F27B5A3F3CA6A6F8DE811 /* MarketView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D18242E828A581F683A2BC53 /* MarketView.swift */; };
 		A8F5BF24742FACE7CF2629A2 /* StatusModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3389CDFC84DD9A8C5267EC3B /* StatusModels.swift */; };
 		AAA49AB296BA731D92456BFA /* Styles.swift in Sources */ = {isa = PBXBuildFile; fileRef = F4168E4C6ECE1003CDE13C52 /* Styles.swift */; };
 		B424590060DF2193E967BDB8 /* PortfolioWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6402602DF58BAABA60DF7341 /* PortfolioWidget.swift */; };
@@ -87,6 +89,7 @@
 		C767AB98BCA0BE48448B1A80 /* Period.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Period.swift; sourceTree = "<group>"; };
 		CB04A5F85B5E04114578B477 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		CF0A0C34F996D1FB7B6BD4BF /* CandidateModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CandidateModels.swift; sourceTree = "<group>"; };
+		D18242E828A581F683A2BC53 /* MarketView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MarketView.swift; sourceTree = "<group>"; };
 		D9D480A7D2DE68CA34C078AB /* ThesisEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThesisEditorView.swift; sourceTree = "<group>"; };
 		EB69A6D57F6E555183291122 /* AppConfig.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppConfig.swift; sourceTree = "<group>"; };
 		F2D2C19454644C4CED3E73DB /* ThesisModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThesisModels.swift; sourceTree = "<group>"; };
@@ -110,6 +113,7 @@
 				EB69A6D57F6E555183291122 /* AppConfig.swift */,
 				CF0A0C34F996D1FB7B6BD4BF /* CandidateModels.swift */,
 				7E602426CE5496F83F115FD8 /* MarketClock.swift */,
+				D18242E828A581F683A2BC53 /* MarketView.swift */,
 				C767AB98BCA0BE48448B1A80 /* Period.swift */,
 				7D0CB050AF84EFAF3193DAB0 /* PortfolioService.swift */,
 				3389CDFC84DD9A8C5267EC3B /* StatusModels.swift */,
@@ -261,6 +265,7 @@
 				87F56D0538CA795D52CE5053 /* CandidateModels.swift in Sources */,
 				775E0E061E2293B13E0F8374 /* CyclePeriodIntent.swift in Sources */,
 				D4BE2CD69C6B3205B6839B67 /* MarketClock.swift in Sources */,
+				4BC04D84CF868375FE48EB42 /* MarketView.swift in Sources */,
 				FA39154D5DDC486FCF2DBC5B /* Period.swift in Sources */,
 				3A8335AF513006DDC074918E /* PortfolioService.swift in Sources */,
 				B424590060DF2193E967BDB8 /* PortfolioWidget.swift in Sources */,
@@ -281,6 +286,7 @@
 				C88BF6220626DABAACF10717 /* ContentView.swift in Sources */,
 				4BF0E79ABF7AD59697347F86 /* HealthView.swift in Sources */,
 				B544A577920F19676503EF54 /* MarketClock.swift in Sources */,
+				991F27B5A3F3CA6A6F8DE811 /* MarketView.swift in Sources */,
 				2FF2ABEA4A408D5DF3A88CFA /* Period.swift in Sources */,
 				511F03699104EE0EC2EA20F5 /* PortfolioService.swift in Sources */,
 				39DE7057429466AE3E1BBF76 /* SMAdviserApp.swift in Sources */,
