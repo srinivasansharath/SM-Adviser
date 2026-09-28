@@ -21,6 +21,7 @@ from zoneinfo import ZoneInfo
 from ..analytics.market import (
     benchmark_names,
     build_market,
+    index_from_candles,
     indices_from_quotes,
     kite_instrument,
     with_vs_market,
@@ -48,25 +49,67 @@ def _widget_path(config: dict) -> Path:
     return out_dir / "widget.json"
 
 
-def _refresh_market(doc: dict, connector, config: dict) -> None:
-    """Re-quote the benchmark indices off the SAME Kite feed the holdings prices came from, so
-    the portfolio-vs-market comparison is aligned to the same minute (a 15-min-delayed index
-    quote against live holdings would make the difference lie).
+def _default_market_data():
+    """Lazy + local, so a tick that gets its indices from Kite never imports yfinance."""
+    from ..connectors.market_data import get_market_data
 
-    Best-effort: on any failure the morning run's end-of-day block is left in place rather than
-    blanked — stale context beats none, and `source` says where it came from.
+    return get_market_data()
+
+
+def _quoted_indices(connector, names: list[str]) -> list[dict]:
+    """Index moves off the SAME feed as the holdings prices — the ideal source, because the two
+    sides of the comparison are then the same tick.
+
+    Needs a Kite market-data subscription: without one, `quote`/`ltp`/`ohlc` all raise
+    PermissionException (verified on this deployment 2026-09-28), so this returns [] and the
+    caller falls back.
     """
-    names = benchmark_names(config)
     get_quotes = getattr(connector, "get_quotes", None)
     if not get_quotes:
-        return
+        return []
     try:
-        quotes = get_quotes([kite_instrument(n) for n in names])
+        return indices_from_quotes(names, get_quotes([kite_instrument(n) for n in names]))
     except Exception:
-        return
-    indices = indices_from_quotes(names, quotes)
-    if indices:
-        doc["market"] = build_market(indices, getattr(connector, "name", "?"))
+        return []
+
+
+def _candle_indices(names: list[str], market_data=None) -> tuple[list[dict], str]:
+    """Index moves from the market-data connector's daily candles, with the source's name.
+
+    Yahoo keeps TODAY's daily bar updating through the session, so two candles (yesterday's
+    close + today's running close) give today's index move a few minutes behind live. Not the
+    same tick as the holdings, but the skew is minutes on a number that moves in tenths of a
+    percent per hour — far better than comparing today's portfolio against yesterday's market.
+    """
+    try:
+        md = market_data or _default_market_data()
+    except Exception:
+        return [], "?"
+    out = []
+    for name in names:
+        try:
+            out.append(index_from_candles(name, md.get_index_candles(name, 2)))
+        except Exception:
+            continue  # one unreachable index must not cost us the others
+    return [i for i in out if i], md.name
+
+
+def _refresh_market(doc: dict, connector, config: dict, market_data=None) -> str | None:
+    """Refresh the benchmark block, preferring the holdings' own feed and falling back to candles.
+
+    Best-effort: if every source fails, the morning run's block is left in place rather than
+    blanked — stale context beats none, and `source` always says where the number came from.
+    Returns the source used, or None if nothing was refreshed.
+    """
+    names = benchmark_names(config)
+    indices = _quoted_indices(connector, names)
+    source = getattr(connector, "name", "?")
+    if not indices:
+        indices, source = _candle_indices(names, market_data)
+    if not indices:
+        return None
+    doc["market"] = build_market(indices, source)
+    return source
 
 
 def run(now: dt.datetime | None = None, force: bool = False) -> dict:
@@ -121,7 +164,7 @@ def run(now: dt.datetime | None = None, force: bool = False) -> dict:
     if wsum:
         p["day_change_pct"] = round(wacc / wsum, 2)
 
-    _refresh_market(doc, connector, config)
+    market_source = _refresh_market(doc, connector, config)
     doc["market"] = with_vs_market(doc.get("market"), p.get("day_change_pct"))
     doc["prices_as_of"] = now.isoformat(timespec="seconds")
 
@@ -134,6 +177,7 @@ def run(now: dt.datetime | None = None, force: bool = False) -> dict:
         "updated_holdings": updated,
         "value": p["value"],
         "vs_market_pct": (doc.get("market") or {}).get("vs_market_pct"),
+        "market_source": market_source,
         "prices_as_of": doc["prices_as_of"],
     }
 

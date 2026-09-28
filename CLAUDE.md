@@ -78,10 +78,13 @@ its `$HOME` mount must be **writable** (`--mount "$HOME/sm-adviser:w"`) or every
   a stop that depends on a model's daily reading is not a stop.
 - **order_flow returns 0** from datacenter IPs (NSE anti-bot); harmless, confirmation-only.
 - **Market context** (`widget.json.market`) answers "is everything red, or just my stocks?".
-  Kite's `quote()` returns **`net_change` = 0 for indices**, so the day change must come from
-  `last_price` vs `ohlc.close`. The pre-open morning run uses yfinance candles (last session
-  close-to-close, matching what Kite's holdings day-change shows at 08:00); the intraday job
-  re-quotes indices through Kite so the comparison is on the same tick as the holdings.
+  **This Kite plan has no market-data subscription** — `quote`/`ltp`/`ohlc` all raise
+  `PermissionException` (verified 2026-09-28), so the index move cannot come off the holdings'
+  own feed and both jobs use yfinance daily candles: the last completed session pre-open, and
+  today's *running* bar during the session (Yahoo keeps it updating, so a 2-candle pull is a
+  live-enough intraday index move). The Kite path is still tried first and is correct for anyone
+  who does hold the subscription — and there, the day change must be computed from `last_price`
+  vs `ohlc.close`, because Kite returns **`net_change` = 0 for indices**.
   Benchmarks come from `config.yaml` `portfolio.benchmarks.broad` — adding one is a config line.
 - **The app requires HTTPS** (ATS enforced); serve via Tailscale (`tailscale serve --https=8443 8787`).
   On macOS use the **Homebrew `tailscale` formula** (`sudo brew services start tailscale`) — the

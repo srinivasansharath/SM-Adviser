@@ -165,11 +165,37 @@ def test_intraday_refresh_requotes_indices_live():
     assert doc["market"]["source"] == "zerodha"     # live quote, not the morning run's close
 
 
-def test_intraday_refresh_keeps_morning_context_when_quotes_fail():
+def test_intraday_refresh_falls_back_to_candles_when_quotes_are_denied():
+    # Kite's market-data endpoints need a subscription this deployment doesn't have, so the
+    # live path raises and today's index move has to come from the market-data connector.
+    doc = {}
+    source = intraday_refresh._refresh_market(doc, _BrokenConnector(), CFG, MockMarketData())
+    assert source == "mock"
+    assert [i["name"] for i in doc["market"]["indices"]] == ["NIFTY 50", "NIFTY 500"]
+
+
+def test_intraday_refresh_prefers_the_holdings_feed_over_candles():
+    class _Exploding:
+        name = "mock"
+
+        def get_index_candles(self, index, days):
+            raise AssertionError("must not fall back when the connector can quote")
+
+    doc = {}
+    assert intraday_refresh._refresh_market(doc, _QuotingConnector(), CFG, _Exploding()) == "zerodha"
+
+
+def test_intraday_refresh_keeps_morning_context_when_every_source_fails():
+    class _NoCandles:
+        name = "dead"
+
+        def get_index_candles(self, index, days):
+            raise RuntimeError("yahoo unreachable")
+
     stale = {"benchmark": "NIFTY 50", "source": "yfinance",
              "indices": [{"name": "NIFTY 50", "ltp": 25045.35, "day_change_pct": -0.3}]}
     doc = {"market": stale}
-    intraday_refresh._refresh_market(doc, _BrokenConnector(), CFG)
+    assert intraday_refresh._refresh_market(doc, _BrokenConnector(), CFG, _NoCandles()) is None
     assert doc["market"] is stale                   # stale context beats a blanked field
 
 
