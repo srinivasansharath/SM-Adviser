@@ -77,6 +77,16 @@ its `$HOME` mount must be **writable** (`--mount "$HOME/sm-adviser:w"`) or every
   in `score_holding` before any LLM runs, forcing Exit-Candidate. Price rules belong in the latter —
   a stop that depends on a model's daily reading is not a stop.
 - **order_flow returns 0** from datacenter IPs (NSE anti-bot); harmless, confirmation-only.
+- **BSE news needs a full browser header set.** BSE is behind Akamai, which scores the *whole*
+  header set: a UA+Referer+Accept request gets an instant 403 edge page (not IP-based, not rate
+  limiting). It fails **silently** — `r.json()` raises on the HTML body, the bare `except` returns
+  `[]`, and that reads as "filed nothing", surfacing only as `news: 0/N holdings with filings` in
+  `/status`. **`Accept-Encoding` is load-bearing** and was never in the code: httpx injects
+  `gzip, deflate` itself, so the old set passed by accident — it is pinned explicitly now, and must
+  stay limited to codecs httpx can decode (no `br`/`zstd` without the extra). No clean minimal set
+  exists: dropping any *single* other header still passes, but trimming to five does not. Don't
+  "tidy" `_BSE_HEADERS`. Same block hits the ISIN->scrip search endpoint, so symbols outside
+  `BSE_SCRIP` fail too. (Fixed 2026-09-30.)
 - **Market context** (`widget.json.market`) answers "is everything red, or just my stocks?".
   **This Kite plan has no market-data subscription** — `quote`/`ltp`/`ohlc` all raise
   `PermissionException` (verified 2026-09-28), so the index move cannot come off the holdings'
