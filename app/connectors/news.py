@@ -21,10 +21,37 @@ from abc import ABC, abstractmethod
 
 _BSE_URL = "https://api.bseindia.com/BseIndiaAPI/api/AnnSubCategoryGetData/w"
 _BSE_SEARCH = "https://api.bseindia.com/BseIndiaAPI/api/PeerSmartSearch/w"
+# BSE sits behind Akamai, which around 2026-09-29 started scoring the *whole* header set rather
+# than just the User-Agent: the old UA + Referer + Accept request gets a 403 "Access Denied" edge
+# page. It is not IP-based (same 403 from the Mini and this Mac) and not rate-limiting (the reject
+# is instant). The block is silent in effect — `r.json()` raises on the HTML body, the except
+# returns [], and it surfaces only as `news: 0/N holdings with filings` in /status.
+#
+# **`Accept-Encoding` is the load-bearing one** and the easiest to lose, because nothing in the
+# code used to mention it: httpx injects `gzip, deflate` on its own, so the set passed only by
+# accident. A client that doesn't inject it — or a caller overriding headers — flips every request
+# back to 403, which is why it is pinned here explicitly. Keep the value to
+# codecs httpx can actually decode — adding `br`/`zstd` without the matching extra installed would
+# let BSE return a body httpx can't read.
+#
+# There is no clean minimal set beyond that: dropping any *single* other header still passes, but
+# trimming to UA+Referer+Origin+Accept-Language+Accept-Encoding does not. Send the full realistic
+# Chrome XHR set and don't "tidy" it — anything less is a coin flip against a bot score.
+# Verified 2026-09-30 from the Mac Mini: old headers 403, this set 200 on 3/3 attempts.
 _BSE_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/125 Safari/537.36",
-    "Referer": "https://www.bseindia.com/corporates/ann.html",
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                  "(KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+    "Referer": "https://www.bseindia.com/",
+    "Origin": "https://www.bseindia.com",
     "Accept": "application/json, text/plain, */*",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate",
+    "sec-ch-ua": '"Chromium";v="125", "Not.A/Brand";v="24"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"Windows"',
+    "Sec-Fetch-Dest": "empty",
+    "Sec-Fetch-Mode": "cors",
+    "Sec-Fetch-Site": "same-site",
 }
 _ATTACH = "https://www.bseindia.com/xml-data/corpfiling/AttachLive/"
 
