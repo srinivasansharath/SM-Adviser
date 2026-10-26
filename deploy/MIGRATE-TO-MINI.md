@@ -144,7 +144,7 @@ The goal therefore becomes **"rarely reboots, and you hear about it fast"**:
 
 | Mitigation | What it buys |
 |---|---|
-| **UPS** | The real fix. A brief outage never becomes a reboot. `pmset -g batt` shows AC only today, so there's none attached. |
+| ~~**UPS**~~ | Closed: the whole office is on UPS backup (not visible to `pmset -g batt`, which shows AC only). |
 | **Disable automatic macOS updates** | Removes the most likely *silent* reboot. `AutomaticallyInstallMacOSUpdates = 1` today, with 26.7 and macOS 27 pending. |
 | **`sudo fdesetup authrestart`** for every planned reboot | Boots through FileVault without a prompt. `fdesetup supportsauthrestart` returns **true** on this mini. Never use plain `sudo reboot` remotely. |
 | **Off-box dead-man's switch** | The on-box watchdog dies with the machine, so it can't report "I'm off". Something else has to notice. |
@@ -424,7 +424,7 @@ NUC, which needed a wall-socket power cycle.
 **This is the Colima-vs-native tradeoff made concrete.** Native Postgres + uvicorn under *system*
 LaunchDaemons would have returned with no login; Colima cannot, because a VM needs a user session,
 and FileVault rules out automatic login. Options, cheapest first:
-1. **UPS** — stops the reboot happening at all. Still the best value.
+1. ~~**UPS**~~ — closed: the whole office is already on UPS backup.
 2. **Accept it** — remote login via Screen Sharing after any reboot.
 3. **Move Postgres + uvicorn to native system LaunchDaemons** — real work, loses Docker parity, but
    the only route to genuinely unattended recovery while FileVault stays on.
@@ -473,10 +473,11 @@ Ordered by what the FileVault-on decision leaves exposed.
   `~/sma-instances/registry` was empty on 25 Sep.
 - **Off-machine backup job** — a weekly `pg_dump` + config bundle to the NAS. Phase 0.6 does it
   once by hand; automating it is the real fix for "config.yaml lives on one disk".
-- **UPS** — the highest-value hardening left, now that FileVault stays on: it stops a power cut
-  from becoming a reboot (and therefore a manual unlock) at all.
 - ~~**UPS**~~ — resolved 2026-09-26: the office is on a UPS, and the NAS is additionally on a
-  separate home UPS line, which is why it makes a good independent witness.
+  separate home UPS line, which is why it makes a good independent witness. Closed again
+  2026-10-26. Note: an unclean reboot still happened that day at 03:55 IST (no shutdown record, no
+  panic report), so the office UPS did not ride through whatever happened.
+  Recovery was the remote unlock + login in `deploy/macos/README.md`.
 - ~~**Off-box dead-man's switch**~~ — **built 2026-09-26**, see `deploy/macos/README.md`. The Mini
   publishes heartbeats over SSH to the NAS; `deploy/monitor/nas-deadman.sh` on the NAS (separate UPS
   line) alerts via DSM when they stop. Fail-safe: silence is the alarm. Still to do: create the DSM

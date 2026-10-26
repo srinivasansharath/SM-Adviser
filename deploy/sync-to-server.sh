@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Push the repo (code + gitignored config/secrets) from this Mac to the server.
-# The gitignored files (.env, config.yaml, theses.yaml, kite_token.json) are NOT on
+# The gitignored files (.env, config.yaml, theses.yaml) are NOT on
 # GitHub, so rsync — not git — is how they reach the server.
 #
 #   ./deploy/sync-to-server.sh            # sync code + config
@@ -16,6 +16,11 @@
 # SAFETY: --delete once wiped config.yaml off the server because that file lived ONLY there
 # (it's gitignored, and this Mac never had a copy). Server-side state is now PROTECTED from
 # deletion, and anything deleted/overwritten is kept in .rsync-backup/.
+#
+# kite_token.json is EXCLUDED, not just protected: it is server-made state (the morning run mints
+# it daily), and a P filter only stops deletion, not overwriting. Pushing it clobbered the
+# server's fresh token with this Mac's stale one on every sync (found 2026-10-26: July's token
+# about to replace that day's). An excluded file is also immune to --delete.
 set -euo pipefail
 
 HOST="${SMA_HOST:-mini}"
@@ -29,7 +34,7 @@ rsync -az --delete \
   --filter='P config.yaml' \
   --filter='P .env' \
   --filter='P theses.yaml' \
-  --filter='P kite_token.json' \
+  --exclude 'kite_token.json' \
   --filter='P data/**' \
   --filter='P reports_out/**' \
   --filter='P .rsync-backup/**' \
