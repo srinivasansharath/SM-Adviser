@@ -160,9 +160,16 @@ Recovery itself is not announced — exit 0 means DSM sends nothing by design.
   docker run --rm -v "$HOME/sm-adviser:/t" alpine touch /t/.w && echo WRITABLE
   ```
 - **FileVault is ON, so the mini cannot boot unattended.** After an unexpected reboot (power cut,
-  panic) it sits at the preboot unlock screen — no SSH, no Screen Sharing — until someone types the
-  password. Once they do, macOS passes that auth through to a login session, so the LaunchAgents and
-  Colima return from that one password entry. Consequences for ops:
+  panic) it sits at the preboot unlock screen until someone types the password. Unlocking at the
+  physical keyboard passes that auth through to a login session, so the LaunchAgents and Colima
+  return from that one password entry. Consequences for ops:
+  - **The preboot screen is reachable over SSH — password only.** macOS 26 runs an sshd there, so
+    `ssh mini` *connects* but rejects the key (`Permission denied (publickey,…)`) — `authorized_keys`
+    is on the still-locked Data volume. Screen Sharing (:5900) and the API stay closed. To unlock
+    remotely: `ssh -o PubkeyAuthentication=no mini`, type the login password; the session drops and
+    the boot continues. **That SSH unlock creates no login session** (`gui/501` stays missing), so
+    finish with one Screen Sharing login as below. Verified 2026-10-26 after an unattended power-cut
+    reboot at 03:55 IST (no shutdown record, no panic report; `autorestart 1` brought it back).
   - **Never `sudo reboot` remotely.** Use `sudo fdesetup authrestart` (supported on this mini), which
     stores the unlock key for exactly one boot so the *machine* comes back by itself.
   - **But the stack does not.** `authrestart` creates no login session, so after a reboot you get

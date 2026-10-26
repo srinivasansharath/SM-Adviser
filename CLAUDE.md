@@ -101,8 +101,12 @@ its `$HOME` mount must be **writable** (`--mount "$HOME/sm-adviser:w"`) or every
   `.pkg`/App Store builds gate `tailscaled` behind a GUI-approved network extension. Under `sudo`,
   call it by absolute path (`/opt/homebrew/bin/tailscale`); sudo's PATH prefers `/usr/local/bin`.
 - **FileVault is ON on the Mac Mini**, so it cannot boot unattended. Never `sudo reboot` it
-  remotely — use `sudo fdesetup authrestart`, or it strands at the preboot unlock screen with no
-  SSH. Automatic macOS updates are disabled so the OS can't reboot itself.
+  remotely — use `sudo fdesetup authrestart`, or it strands at the preboot unlock screen.
+  Automatic macOS updates are disabled so the OS can't reboot itself. **Stuck at preboot looks like:**
+  `ssh mini` connects but rejects the key (`authorized_keys` is on the locked volume) and :5900 is
+  closed. macOS 26 accepts a *password* there: `ssh -o PubkeyAuthentication=no mini` unlocks the
+  disk remotely — but creates no login session, so a Screen Sharing login is still needed (below).
+  Verified 2026-10-26 after a power-cut reboot.
 - **A reboot leaves the stack down until someone logs in** (verified 2026-09-26). `authrestart`
   boots the OS and returns sshd + tailscaled, but Colima, Docker, the API and all four launchd
   agents are *user* LaunchAgents: `gui/501` doesn't exist until login, and `launchctl bootstrap`

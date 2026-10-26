@@ -128,14 +128,17 @@ echo
 printf '  - %s\n' "${problems[@]}"
 echo
 echo "The Mac Mini stopped reporting in. Most likely causes, in order:"
-echo "  1. It rebooted and is waiting at the FileVault login window — nothing starts until"
-echo "     someone logs in. Screen Sharing to 192.168.1.40 (port 5900) reaches that screen."
+echo "  1. It rebooted (power cut?) and is stuck at the FileVault preboot unlock. Tell-tale:"
+echo "     'ssh mini' connects but rejects the key, and :5900 is closed. Unlock with"
+echo "       ssh -o PubkeyAuthentication=no mini      # type the login password"
+echo "     then log in once via Screen Sharing (vnc://192.168.1.40) — the SSH unlock alone"
+echo "     creates no login session, so the agents and Colima stay down until you do."
 echo "  2. Colima is not running, so Docker and the API are down:"
 echo "       ssh mini 'colima status && docker compose -f ~/sm-adviser/docker-compose.yml ps'"
 echo "  3. The launchd agents are not armed:"
 echo "       ssh mini 'launchctl list | grep sm-adviser'   # expect 4"
-echo "  4. The NAS SMB mount on the Mini dropped, so heartbeats cannot be written even though"
-echo "     the Mini is fine. Check: ssh mini 'ls /Volumes/home >/dev/null && echo mounted'"
+echo "  4. The Mini is fine but cannot SSH to this NAS (heartbeats go over SSH, not SMB)."
+echo "     Check: ssh mini 'ssh -i ~/.ssh/id_ed25519_nas_heartbeat sharath@192.168.1.62 true && echo ok'"
 echo
 echo "Heartbeat directory on this NAS: $DIR"
 ls -la "$DIR" 2>/dev/null | sed 's/^/  /'
